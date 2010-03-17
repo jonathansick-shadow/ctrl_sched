@@ -76,107 +76,14 @@ class BlackboardTestCase(unittest.TestCase):
         itemfile = os.path.join(self.bbdir,"dataAvailable","v1234-s0.fits.paf")
         self.assert_(os.path.exists(itemfile))
         
-    def testQueueDatasets(self):
-        self.testAddDataset()
-        item = self._datasetItem("v1234-s1.fits", "raw")
-        with self.bb:
-            self.bb.queues.dataAvailable.append(item)
-
-            items = []
-            for item in self.bb.queues.dataAvailable.iterate():
-                items.append(item)
-
-        files = filter(lambda f: not f.startswith("_") and not f.startswith("."), os.listdir(self.daq))
-        self.assertEquals(len(files), 2)
-
-        # pdb.set_trace()
-        self.bb.queueData(items)
-
-        # query queues to confirm transfer
-        with self.bb:
-            self.assertEquals(self.bb.queues.dataAvailable.length(), 0)
-            self.assertEquals(self.bb.queues.dataQueued.length(), 2)
-            self.assertEquals(self.bb.queues.dataQueued.get(0).getName(),
-                              "v1234-s0.fits")
-            self.assertEquals(self.bb.queues.dataQueued.get(1).getName(),
-                              "v1234-s1.fits")
-
-        # test the state of the filesystem
-        files = filter(lambda f: not f.startswith("_") and not f.startswith("."), os.listdir(self.daq))
-        self.assertEquals(len(files), 0)
-        files = filter(lambda f: not f.startswith("_") and not f.startswith("."), os.listdir(self.dqq))
-        self.assertEquals(len(files), 2)
-
-        self.assert_("v1234-s0.fits.paf" in files)
-        itemfile = os.path.join(self.dqq,"v1234-s0.fits.paf")
-        self.assert_(os.path.exists(itemfile))
-
-        self.assert_("v1234-s1.fits.paf" in files)
-        itemfile = os.path.join(self.dqq,"v1234-s1.fits.paf")
-        self.assert_(os.path.exists(itemfile))
-
-        # test reconstitution from disk
-        del self.bb
-        pdb.set_trace()
-        self.bb = bb.Blackboard(self.bbdir)
-        
-        # query queues to confirm transfer
-        with self.bb:
-            self.assertEquals(self.bb.queues.dataAvailable.length(), 0)
-            self.assertEquals(self.bb.queues.dataQueued.length(), 2)
-            self.assertEquals(self.bb.queues.dataQueued.get(0).getName(),
-                              "v1234-s0.fits")
-            self.assertEquals(self.bb.queues.dataQueued.get(1).getName(),
-                              "v1234-s1.fits")
-
-        
-    def testQueueDatasetsRollback(self):
-        self.testAddDataset()
-        item = self._datasetItem("v1234-s1.fits", "raw")
-        with self.bb:
-            self.bb.queues.dataAvailable.append(item)
-
-            items = []
-            for item in self.bb.queues.dataAvailable.iterate():
-                items.append(item)
-
-        files = filter(lambda f: not f.startswith("_") and not f.startswith("."), os.listdir(self.daq))
-        self.assertEquals(len(files), 2)
-
-        # pdb.set_trace()
-        self.bb._dbfail = 1
-        self.assertRaises(RuntimeError, self.bb.queueData, items)
-
-        # query queues to confirm rollback
-        with self.bb:
-            self.assertEquals(self.bb.queues.dataQueued.length(), 0)
-            self.assertEquals(self.bb.queues.dataAvailable.length(), 2)
-            self.assertEquals(self.bb.queues.dataAvailable.get(0).getName(),
-                              "v1234-s0.fits")
-            self.assertEquals(self.bb.queues.dataAvailable.get(1).getName(),
-                              "v1234-s1.fits")
-
-        files = filter(lambda f: not f.startswith("_") and not f.startswith("."), os.listdir(self.dqq))
-        self.assertEquals(len(files), 0)
-        files = filter(lambda f: not f.startswith("_") and not f.startswith("."), os.listdir(self.daq))
-        self.assertEquals(len(files), 2)
-
-        self.assert_("v1234-s0.fits.paf" in files)
-        itemfile = os.path.join(self.daq,"v1234-s0.fits.paf")
-        self.assert_(os.path.exists(itemfile))
-
-        self.assert_("v1234-s1.fits.paf" in files)
-        itemfile = os.path.join(self.daq,"v1234-s1.fits.paf")
-        self.assert_(os.path.exists(itemfile))
-        
     def testAddJob(self):
         item = self._jobItem("v1234")
         with self.bb:
-            self.bb.queues.jobsAvailable.append(item)
+            self.bb.queues.jobsPossible.append(item)
 
             # query queue to confirm addition
-            self.assertEquals(self.bb.queues.jobsAvailable.length(), 1)
-            self.assertEquals(self.bb.queues.jobsAvailable.get(0).getName(),
+            self.assertEquals(self.bb.queues.jobsPossible.length(), 1)
+            self.assertEquals(self.bb.queues.jobsPossible.get(0).getName(),
                               "v1234")
         
         # confirm filesystem state

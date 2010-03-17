@@ -3,7 +3,7 @@ the actual Blackboard class
 """
 from __future__ import with_statement
 
-from queue import BasicBlackboardQueue
+from queue import DataQueue, JobQueue
 from item  import Props
 from exceptions import *
 from lsst.pex.logging import Log
