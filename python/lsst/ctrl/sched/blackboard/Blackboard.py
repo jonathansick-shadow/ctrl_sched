@@ -56,7 +56,7 @@ class Blackboard(LockProtected):
 
             # a queue of datasets that have beend bundled into jobs and queued
             # for processing.  
-            dir = os.path.join(self._persistDir, "jobPossible")
+            dir = os.path.join(self._persistDir, "jobsPossible")
             self.queues.jobsPossible = JobQueue(dir, self._log, lock)
 
             # a queue of jobs that are ready to be processed

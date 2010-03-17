@@ -21,7 +21,7 @@ class BlackboardTestCase(unittest.TestCase):
         self.bb = bb.Blackboard(self.bbdir)
         
         self.daq = os.path.join(self.bbdir,"dataAvailable")
-        self.dqq = os.path.join(self.bbdir,"dataQueued")
+        self.jsq = os.path.join(self.bbdir,"jobsPossible")
         self.jaq = os.path.join(self.bbdir,"jobsAvailable")
         self.jpq = os.path.join(self.bbdir,"jobsInProgress")
         self.jdq = os.path.join(self.bbdir,"jobsDone")
@@ -43,9 +43,13 @@ class BlackboardTestCase(unittest.TestCase):
 
     def testEmpty(self):
         self.assert_(os.path.exists(self.bbdir))
-        for d in "dataAvailable jobsAvailable jobsInProgress dataQueued jobsDone pipelinesReady".split():
-            self.assert_(os.path.exists(os.path.join(self.bbdir,d)))
-            self.assert_(os.path.exists(os.path.join(self.bbdir,d,"_order.list")))
+        for d in "dataAvailable jobsPossible jobsAvailable jobsInProgress jobsDone pipelinesReady".split():
+            path = os.path.join(self.bbdir,d)
+            self.assert_(os.path.exists(path),
+                         "queue directory not found: " + path)
+            path = os.path.join(self.bbdir,d,"_order.list")
+            self.assert_(os.path.exists(path),
+                         "queue order file not found: " + path)
 
     def _datasetItem(self, name, type=""):
         return bb.DataProductItem.createItem(name, type)
@@ -87,7 +91,7 @@ class BlackboardTestCase(unittest.TestCase):
                               "v1234")
         
         # confirm filesystem state
-        itemfile = os.path.join(self.jaq,"v1234.paf")
+        itemfile = os.path.join(self.jsq,"v1234.paf")
         self.assert_(os.path.exists(itemfile))
         
 
