@@ -1,0 +1,637 @@
+#!/usr/bin/env python
+"""
+Tests of the SharedData class
+"""
+from __future__ import with_statement
+
+import pdb                              # we may want to say pdb.set_trace()
+import os
+import sys
+import unittest
+import time
+import threading
+
+import lsst.ctrl.sched.blackboard as bb
+from lsst.ctrl.sched.blackboard.queue import _FSDBBlackboardQueue
+from lsst.ctrl.sched.blackboard.queue import _PolicyBlackboardQueue
+from lsst.pex.policy import Policy, DefaultPolicyFile
+from lsst.pex.policy import PAFWriter
+
+testdir = os.path.join(os.environ["CTRL_SCHED_DIR"], "tests")
+
+class AbsBBItemTestCase(unittest.TestCase):
+
+    def setUp(self):
+        pass
+
+    def tearDown(self):
+        pass
+
+    def testNoConstruction(self):
+        self.assertRaises(RuntimeError, bb.BlackboardItem)
+
+    def testAbsMeth(self):
+        bbi = bb.BlackboardItem(True)
+        self.assertRaises(RuntimeError, bbi.getProperty, "goofy")
+        self.assertRaises(RuntimeError, bbi.getPropertyNames)
+        self.assertRaises(RuntimeError, bbi.keys)
+        self.assertRaises(RuntimeError, bbi.hasProperty, "goofy")
+        self.assertRaises(RuntimeError, bbi.has_key, "goofy")
+
+class DictBBItemTestCase(unittest.TestCase):
+
+    def setUp(self):
+        self.bbi = bb.DictBlackboardItem({"foo": "bar", "count": 3,
+                                          "files": [ "goob", "gurn"] })
+
+    def tearDown(self):
+        pass
+
+    def testEmptyCtr(self):
+        bbi = bb.DictBlackboardItem()
+        self.assertEquals(len(bbi.getPropertyNames()), 0)
+
+    def testGetProp(self):
+        self.assertEquals(self.bbi.getProperty("foo"), "bar")
+        self.assertEquals(self.bbi.getProperty("foo", 5), "bar")
+        self.assertEquals(self.bbi.getProperty("count", 5), 3)
+        self.assertEquals(self.bbi.getProperty("files"), ["goob", "gurn"])
+        self.assertEquals(self.bbi.getProperty("goob", 5), 5)
+        self.assert_(self.bbi.getProperty("goob") is None)
+
+    def testSeqAccess(self):
+        self.assertEquals(self.bbi["foo"], "bar")
+        self.assertEquals(self.bbi["count"], 3)
+        self.assertEquals(self.bbi["files"], ["goob", "gurn"])
+        self.assertEquals(self.bbi.getProperty("goob", 5), 5)
+        self.assert_(self.bbi.getProperty("goob") is None)
+        
+    def testSetProp(self):
+        self.bbi._setProperty("henry", "hank")
+        self.assertEquals(self.bbi.getProperty("henry"), "hank")
+        self.bbi._setProperty("seq", range(3))
+        self.assertEquals(self.bbi.getProperty("seq"), [0, 1, 2])
+
+    def testGetPropertyNames(self):
+        names = self.bbi.getPropertyNames()
+        self.assertEquals(len(names), 3)
+        self.assert_("foo" in names)
+        self.assert_("count" in names)
+        self.assert_("files" in names)
+        self.assert_("goob" not in names)
+
+    def testKeys(self):
+        names = self.bbi.keys()
+        self.assertEquals(len(names), 3)
+        self.assert_("foo" in names)
+        self.assert_("count" in names)
+        self.assert_("files" in names)
+        self.assert_("goob" not in names)
+
+class PolicyBBItemTestCase(DictBBItemTestCase):
+
+    propfile = os.path.join(testdir, "props.paf")
+    tmppropfile = os.path.join(testdir, "tmpprops.paf")
+    
+    def setUp(self):
+        if not os.path.exists(self.propfile):
+            p = Policy()
+            p.set("foo", "bar")
+            p.set("count", 3)
+            p.set("files", "goob")
+            p.add("files", "gurn")
+            w = PAFWriter(self.propfile)
+            w.write(p, True)
+            w.close()
+        
+        self.bbi = bb.PolicyBlackboardItem(self.propfile)
+
+    def tearDown(self):
+        if os.path.exists(self.tmppropfile):
+            os.remove(self.tmppropfile)
+
+    # inherits all tests from DictBBItemTestCase
+
+    def testEmptyCtr(self):
+        # overriding DictBBItemTestCase
+        bbi = bb.PolicyBlackboardItem()
+        self.assertEquals(len(bbi.getPropertyNames()), 0)
+
+    def testCopyFrom(self):
+        # create empty item
+        bbi = bb.PolicyBlackboardItem()
+        self.assertEquals(len(bbi.getPropertyNames()), 0)
+
+        # test copy
+        bbi._copyFrom(self.bbi)
+        self.assertEquals(len(bbi.getPropertyNames()), 3)
+        self.assertEquals(bbi.getProperty("foo"), "bar")
+
+        # test that copy doesn't affect original
+        bbi._setProperty("foo", "hank")
+        self.assertEquals(bbi.getProperty("foo"), "hank")
+        self.assertEquals(self.bbi.getProperty("foo"), "bar")
+
+    def testFormatter(self):
+        fmtr = self.bbi.createFormatter()
+        fmtr = bb.PolicyBlackboardItem.createFormatter()
+        self.assert_(fmtr is not None)
+        self.assert_(hasattr(fmtr, "write"))
+        self.assert_(hasattr(fmtr, "openItem"))
+
+        self.assert_(not os.path.exists(self.tmppropfile))
+        fmtr.write(self.tmppropfile, self.bbi)
+        self.assert_(os.path.exists(self.tmppropfile))
+        
+        del self.bbi
+        self.bbi = fmtr.openItem(self.tmppropfile)
+        self.testGetProp()
+        
+class ImplBBItemTestCase1(DictBBItemTestCase):
+
+    def setUp(self):
+        self.bbi = bb.ImplBlackboardItem(
+            bb.DictBlackboardItem({"foo": "bar", "count": 3,
+                                          "files": [ "goob", "gurn"] }))
+    def tearDown(self):
+        pass
+
+    # inherits all tests from DictBBItemTestCase
+
+class ImplBBItemTestCase2(ImplBBItemTestCase1):
+
+    def setUp(self):
+        p = Policy()
+        p.set("foo", "bar")
+        p.set("count", 3)
+        p.set("files", "goob")
+        p.add("files", "gurn")
+        impl = bb.PolicyBlackboardItem()
+        impl._props = p
+        self.bbi = bb.ImplBlackboardItem(impl)
+            
+    def tearDown(self):
+        pass
+
+    # inherits all tests from DictBBItemTestCase
+
+class BasicBBItemTestCase1(ImplBBItemTestCase1):
+
+    def setUp(self):
+        self.bbi = bb.BasicBlackboardItem(
+            bb.DictBlackboardItem({"foo": "bar", "count": 3,
+                                          "files": [ "goob", "gurn"] }),
+            "Goob")
+        
+    def tearDown(self):
+        pass
+
+    # inherits all tests from DictBBItemTestCase
+    
+    def testNameSet(self):
+        self.assertEquals(self.bbi.getProperty("NAME"), "Goob")
+
+    def testGetPropertyNames(self):
+        names = self.bbi.getPropertyNames()
+        self.assertEquals(len(names), 4)
+        self.assert_("foo" in names)
+        self.assert_("count" in names)
+        self.assert_("files" in names)
+        self.assert_("NAME" in names)
+        self.assert_("goob" not in names)
+
+    def testKeys(self):
+        names = self.bbi.keys()
+        self.assertEquals(len(names), 4)
+        self.assert_("foo" in names)
+        self.assert_("count" in names)
+        self.assert_("files" in names)
+        self.assert_("NAME" in names)
+        self.assert_("goob" not in names)
+
+class BasicBBItemTestCase2(BasicBBItemTestCase1):
+
+    def setUp(self):
+        self.bbi = bb.BasicBlackboardItem.createItem("Goob", 
+                                                 {"foo": "bar", "count": 3,
+                                                  "files": [ "goob", "gurn"] })
+        
+    def tearDown(self):
+        pass
+
+    # inherits all tests from DictBBItemTestCase
+    
+
+class AbsBBItemQTestCase(unittest.TestCase):
+
+    def setUp(self):
+        pass
+
+    def tearDown(self):
+        pass
+
+    def testNoConstruction(self):
+        self.assertRaises(RuntimeError, bb.BlackboardItemQueue)
+
+    def testAbsMeth(self):
+        q = bb.BlackboardItemQueue(True)
+        self.assertRaises(RuntimeError, q.length)
+        self.assertRaises(RuntimeError, q.isEmpty)
+        self.assertRaises(RuntimeError, q.get, 0)
+        self.assertRaises(RuntimeError, q.pop)
+        self.assertRaises(RuntimeError, q.append, None)
+        self.assertRaises(RuntimeError, q.insertAt, None)
+        self.assertRaises(RuntimeError, q.insert, None)
+        self.assertRaises(RuntimeError, q.transferNextTo, q, 0)
+        self.assertRaises(RuntimeError, q.iterate)
+
+class FSQueueFailBaseTestCase(unittest.TestCase):
+
+    def setUp(self):
+        self.dbdir = os.path.join(testdir, "testqueue")
+        self.fmtr = bb.PolicyBlackboardItem.createFormatter()
+
+    def tearDown(self):
+        if os.path.exists(self.dbdir):
+            if os.path.isdir(self.dbdir):
+                files = os.listdir(self.dbdir)
+                for f in files:
+                    os.remove(os.path.join(self.dbdir, f))
+                os.rmdir(self.dbdir)
+            else:
+                os.remove(self.dbdir)
+
+    def testPreExist(self):
+        self.assert_(not os.path.exists(self.dbdir), "%s: exists" % self.dbdir)
+        fd = open(self.dbdir, "w")
+        print >> fd, "boom"
+        fd.close()
+
+        self.assertRaises(bb.BlackboardAccessError, _FSDBBlackboardQueue,
+                          self.dbdir,
+                          bb.PolicyBlackboardItem.createFormatter())
+
+    def testNoParent(self):
+        self.assertRaises(bb.BlackboardAccessError, _FSDBBlackboardQueue,
+                          "/goober/miser",
+                          bb.PolicyBlackboardItem.createFormatter())
+
+class FSQueueTestCase(unittest.TestCase):
+
+    def setUp(self):
+        # pdb.set_trace()
+        self.dbdir = os.path.join(testdir, "testqueue")
+        self.q = _PolicyBlackboardQueue(self.dbdir)
+
+    def _newItem(self, data=None):
+        out = bb.PolicyBlackboardItem()
+        if data:
+            for key in data.keys():
+                out._setProperty(key, data[key])
+        return out
+            
+
+    def tearDown(self):
+        del self.q
+        if os.path.exists(self.dbdir):
+            if os.path.isdir(self.dbdir):
+                files = os.listdir(self.dbdir)
+                for f in files:
+                    os.remove(os.path.join(self.dbdir, f))
+                os.rmdir(self.dbdir)
+            else:
+                os.remove(self.dbdir)
+
+    def testEmpty(self):
+        self.assertEquals(self.q.length(), 0)
+        self.assert_(self.q.isEmpty())
+
+    def testFilename(self):
+        filename = self.q.filenameFor(self._newItem({}))
+        self.assertEquals(filename, "unknown.paf")
+        path = os.path.join(self.dbdir, filename)
+        f = open(path, "w")
+        with f:
+            print >> f, "boo"
+        filename = self.q.filenameFor(self._newItem({}))
+        self.assertEquals(filename, "unknown.1.paf")
+        filename = self.q.filenameFor(self._newItem({"NAME": "goob"}))
+        self.assertEquals(filename, "goob.paf")
+
+    def testPendingName(self):
+        filename = self.q.filenameFor(self._newItem())
+        pending = self.q.pendingAddFor(filename)
+        self.assertEquals(pending, ".add."+filename)
+
+        pending = os.path.join(self.dbdir, pending)
+        f = open(pending, "w")
+        with f:
+            print >> f, "boo"
+        pending = self.q.pendingAddFor(filename)
+        self.assertEquals(pending, ".add.1."+filename)
+        
+        pending = self.q.pendingDelFor(filename)
+        self.assertEquals(pending, ".del."+filename)
+
+        pending = os.path.join(self.dbdir, pending)
+        f = open(pending, "w")
+        with f:
+            print >> f, "boo"
+        pending = self.q.pendingDelFor(filename)
+        self.assertEquals(pending, ".del.1."+filename)
+        
+
+    def testAppend(self):
+        self.q.append(self._newItem({"panel": 1, "foo": "bar"}))
+        self.assertEquals(self.q.length(), 1)
+        self.assert_(not self.q.isEmpty())
+
+        self.assert_(os.path.exists(os.path.join(self.dbdir, "_order.list")))
+        self.assert_(os.path.exists(os.path.join(self.dbdir, "unknown.paf")))
+    
+        self.q.append(self._newItem({"panel": 1, "foo": "bar"}))
+        self.assertEquals(self.q.length(), 2)
+        self.assert_(os.path.exists(os.path.join(self.dbdir, "unknown.1.paf")))
+
+        self.q.append(self._newItem({"panel": 1, "NAME": "bar"}))
+        self.assertEquals(self.q.length(), 3)
+        self.assert_(os.path.exists(os.path.join(self.dbdir, "bar.paf")))
+
+        files = self.q._sd.files
+        self.assertEquals(files[0], "unknown.paf")
+        self.assertEquals(files[1], "unknown.1.paf")
+        self.assertEquals(files[2], "bar.paf")
+        files = self.q._loadOrder()
+        self.assertEquals(files[0], "unknown.paf")
+        self.assertEquals(files[1], "unknown.1.paf")
+        self.assertEquals(files[2], "bar.paf")
+        
+class FSQueueBaseTestCase(unittest.TestCase):
+
+    def setUp(self):
+        # pdb.set_trace()
+        self.dbdir = os.path.join(testdir, "testqueue")
+        self.q = _PolicyBlackboardQueue(self.dbdir)
+
+    def _newItem(self, name, data=None):
+        return bb.BasicBlackboardItem.createItem(name, data)
+
+    def tearDown(self):
+        del self.q
+        for dir in (self.dbdir, self.dbdir+"2"):
+            if os.path.exists(dir):
+                if os.path.isdir(dir):
+                    files = os.listdir(dir)
+                    for f in files:
+                        os.remove(os.path.join(dir, f))
+                    os.rmdir(dir)
+                else:
+                    os.remove(dir)
+
+    def testEmpty(self):
+        self.assertEquals(self.q.length(), 0)
+        self.assert_(self.q.isEmpty())
+
+    def testAppend(self):
+        self.q.append(self._newItem("item1"))
+        self.assertEquals(self.q.length(), 1)
+        self.assert_(not self.q.isEmpty())
+
+        self.assert_(os.path.exists(os.path.join(self.dbdir, "_order.list")))
+        self.assert_(os.path.exists(os.path.join(self.dbdir, "item1.paf")))
+    
+        self.q.append(self._newItem("item1", {"panel": 1, "foo": "bar"}))
+        self.assertEquals(self.q.length(), 2)
+        self.assert_(os.path.exists(os.path.join(self.dbdir, "item1.1.paf")))
+
+        self.q.append(self._newItem("item3", {"panel": 1, "foo": "bar"}))
+        self.assertEquals(self.q.length(), 3)
+        self.assert_(os.path.exists(os.path.join(self.dbdir, "item3.paf")))
+        
+        if hasattr(self.q, "_sd"):
+            files = self.q._sd.files
+            self.assertEquals(files[0], "item1.paf")
+            self.assertEquals(files[1], "item1.1.paf")
+            self.assertEquals(files[2], "item3.paf")
+            files = self.q._loadOrder()
+            self.assertEquals(files[0], "item1.paf")
+            self.assertEquals(files[1], "item1.1.paf")
+            self.assertEquals(files[2], "item3.paf")
+        
+    def testGet(self):
+        self.q.append(self._newItem("item1", {"pos": 1}))
+        self.q.append(self._newItem("item2", {"pos": 2}))
+
+        item = self.q.get(1)
+        self.assertEquals(item["NAME"], "item2")
+        self.assertEquals(item["pos"], 2)
+        item = self.q.get(0)
+        self.assertEquals(item["NAME"], "item1")
+        self.assertEquals(item["pos"], 1)
+
+    def testPop0(self):
+        self.q.append(self._newItem("item1", {"pos": 1}))
+        self.q.append(self._newItem("item2", {"pos": 2}))
+        self.assertEquals(self.q.length(), 2)
+
+        item = self.q.pop()
+        self.assertEquals(item["NAME"], "item1")
+        self.assertEquals(item["pos"], 1)
+        self.assertEquals(self.q.length(), 1)
+
+        deleted = None
+        if hasattr(item, "filename"):
+            deleted = item.filename
+            self.assertEquals(deleted,
+                              os.path.join(self.dbdir,".del.item1.paf"))
+            self.assert_(os.path.exists(deleted))
+
+        item = self.q.get(0)
+        if deleted:
+            self.assert_(not os.path.exists(deleted))
+        self.assertEquals(item["NAME"], "item2")
+        self.assertEquals(item["pos"], 2)
+
+        item = self.q.pop(0)
+        self.assertEquals(item["NAME"], "item2")
+        self.assertEquals(item["pos"], 2)
+        self.assertEquals(self.q.length(), 0)
+
+    def testPopMid(self):
+        self.q.append(self._newItem("item1", {"pos": 1}))
+        self.q.append(self._newItem("item2", {"pos": 2}))
+        self.q.append(self._newItem("item3", {"pos": 3}))
+        self.assertEquals(self.q.length(), 3)
+
+        item = self.q.pop(1)
+        self.assertEquals(item["NAME"], "item2")
+        self.assertEquals(item["pos"], 2)
+        self.assertEquals(self.q.length(), 2)
+
+        item = self.q.get(0)
+        self.assertEquals(item["NAME"], "item1")
+        self.assertEquals(item["pos"], 1)
+        item = self.q.get(1)
+        self.assertEquals(item["NAME"], "item3")
+        self.assertEquals(item["pos"], 3)
+
+    def testPopEnd(self):
+        self.q.append(self._newItem("item1", {"pos": 1}))
+        self.q.append(self._newItem("item2", {"pos": 2}))
+        self.assertEquals(self.q.length(), 2)
+
+        item = self.q.pop(1)
+        self.assertEquals(item["NAME"], "item2")
+        self.assertEquals(item["pos"], 2)
+        self.assertEquals(self.q.length(), 1)
+
+        item = self.q.get(0)
+        self.assertEquals(item["NAME"], "item1")
+        self.assertEquals(item["pos"], 1)
+
+    def testInsertAt0(self):
+        self.q.append(self._newItem("item1", {"pos": 1}))
+        self.q.append(self._newItem("item2", {"pos": 2}))
+        self.assertEquals(self.q.length(), 2)
+
+        self.q.insertAt(self._newItem("item3", {"pos": 3}), 0)
+        self.assertEquals(self.q.length(), 3)
+
+        item = self.q.get(0)
+        self.assertEquals(item["NAME"], "item3")
+        self.assertEquals(item["pos"], 3)
+        item = self.q.get(1)
+        self.assertEquals(item["NAME"], "item1")
+        self.assertEquals(item["pos"], 1)
+        
+    def testInsertAtEmpty(self):
+        self.assertEquals(self.q.length(), 0)
+
+        self.q.insertAt(self._newItem("item3", {"pos": 3}), 0)
+        self.assertEquals(self.q.length(), 1)
+
+        item = self.q.get(0)
+        self.assertEquals(item["NAME"], "item3")
+        self.assertEquals(item["pos"], 3)
+        
+    def testInsertAtMid(self):
+        self.q.append(self._newItem("item1", {"pos": 1}))
+        self.q.append(self._newItem("item2", {"pos": 2}))
+        self.assertEquals(self.q.length(), 2)
+
+        self.q.insertAt(self._newItem("item3", {"pos": 3}), 1)
+        self.assertEquals(self.q.length(), 3)
+
+        item = self.q.get(1)
+        self.assertEquals(item["NAME"], "item3")
+        self.assertEquals(item["pos"], 3)
+        item = self.q.get(0)
+        self.assertEquals(item["NAME"], "item1")
+        self.assertEquals(item["pos"], 1)
+        
+    def testInsertAtEnd(self):
+        self.q.append(self._newItem("item1", {"pos": 1}))
+        self.q.append(self._newItem("item2", {"pos": 2}))
+        self.assertEquals(self.q.length(), 2)
+
+        self.q.insertAt(self._newItem("item3", {"pos": 3}), -1)
+        self.assertEquals(self.q.length(), 3)
+
+        item = self.q.get(2)
+        self.assertEquals(item["NAME"], "item3")
+        self.assertEquals(item["pos"], 3)
+        item = self.q.get(0)
+        self.assertEquals(item["NAME"], "item1")
+        self.assertEquals(item["pos"], 1)
+        item = self.q.get(1)
+        self.assertEquals(item["NAME"], "item2")
+        self.assertEquals(item["pos"], 2)
+        
+        self.q.insertAt(self._newItem("item3", {"pos": 3}), 10)
+        self.assertEquals(self.q.length(), 4)
+
+        item = self.q.get(3)
+        self.assertEquals(item["NAME"], "item3")
+        self.assertEquals(item["pos"], 3)
+        item = self.q.get(2)
+        self.assertEquals(item["NAME"], "item3")
+        self.assertEquals(item["pos"], 3)
+        item = self.q.get(0)
+        self.assertEquals(item["NAME"], "item1")
+        self.assertEquals(item["pos"], 1)
+        item = self.q.get(1)
+        self.assertEquals(item["NAME"], "item2")
+        self.assertEquals(item["pos"], 2)
+        
+    def testInsert(self):
+        self.q.insert(self._newItem("item1"))
+        self.assertEquals(self.q.length(), 1)
+
+        item = self.q.get(0)
+        self.assertEquals(item["NAME"], "item1")
+
+        self.q.insert(self._newItem("item2"), 3)
+        self.assertEquals(self.q.length(), 2)
+        item = self.q.get(1)
+        self.assertEquals(item["NAME"], "item2")
+
+    def testIterate(self):
+        self.q.append(self._newItem("item1", {"pos": 1}))
+        self.q.append(self._newItem("item2", {"pos": 2}))
+        self.q.append(self._newItem("item3", {"pos": 3}))
+        self.assertEquals(self.q.length(), 3)
+
+        i = 0
+        for item in self.q.iterate():
+            i += 1
+            self.assertEquals(item["pos"], i)
+        self.assertEquals(i, 3)
+
+    def testTransfer(self):
+        self.assert_(not os.path.exists(self.dbdir+"2"))
+        other = _PolicyBlackboardQueue(self.dbdir+"2")
+        self.assert_(os.path.exists(self.dbdir+"2"))
+
+        self.q.append(self._newItem("item1", {"pos": 1}))
+        self.q.append(self._newItem("item2", {"pos": 2}))
+        self.q.append(self._newItem("item3", {"pos": 3}))
+        self.assertEquals(self.q.length(), 3)
+
+        self.q.transferNextTo(other, 3)
+        self.assertEquals(self.q.length(), 2)
+        self.assertEquals(self.q.get(0)["pos"], 2)
+
+        self.assertEquals(other.length(), 1)
+        self.assertEquals(other.get(0)["pos"], 1)
+
+        self.q.transferNextTo(other, 3)
+        self.assertEquals(self.q.length(), 1)
+        self.assertEquals(self.q.get(0)["pos"], 3)
+
+        self.assertEquals(other.length(), 2)
+        self.assertEquals(other.get(0)["pos"], 1)
+        self.assertEquals(other.get(1)["pos"], 2)
+
+        self.q.transferNextTo(other, 3)
+        self.assertEquals(self.q.length(), 0)
+
+        self.assertEquals(other.length(), 3)
+        self.assertEquals(other.get(0)["pos"], 1)
+        self.assertEquals(other.get(1)["pos"], 2)
+        self.assertEquals(other.get(2)["pos"], 3)
+
+class PolicyBBQueueTestCase(FSQueueBaseTestCase):
+
+    def setUp(self):
+        # pdb.set_trace()
+        self.dbdir = os.path.join(testdir, "testqueue")
+        self.q = bb.BasicBlackboardQueue(self.dbdir)
+
+    def _newItem(self, name, data=None):
+        return self.q.createItem(name, data)
+
+        
+__all__ = "AbsBBItemTestCase DictBBItemTestCase PolicyBBItemTestCase ImplBBItemTestCase1 AbsBBItemQTestCase".split()
+
+if __name__ == "__main__":
+    unittest.main()

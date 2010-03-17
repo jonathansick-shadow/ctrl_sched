@@ -1,0 +1,4 @@
+#<?cfg paf policy ?>
+files: "goob" "gurn"
+count: 3
+foo: "bar"

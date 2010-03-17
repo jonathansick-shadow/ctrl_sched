@@ -1,0 +1,49 @@
+#<?cfg paf policy ?>
+#
+persist: {
+    dir:   %(schedroot)/isr
+    impl:  lsst.ctrl.sched.blackboard.PolicyDataQueue
+}
+
+listen:  {
+    dataReadyEvent:      RawImageAvailable
+    pipelineEvent:       ISRJob
+    stopEvent:           JobOfficeStop
+}
+
+schedule: {
+    # the triggers identifies the datasets that must be available in order
+    # to schedule a Job.  
+    # 
+    # this trigger indicates that any raw image will trigger
+    # scheduling of a job.
+    trigger: {
+        datasetType:  raw
+    }
+
+    # the jobDatasets parameterizes the datasets that should be
+    # provided as input to a job
+    #
+    # a job will list one dataset with the given type and identifiers
+    # as attributes.  
+    jobDataset: {
+        datasetType:  raw
+        id: {
+          name:  visitid
+        }
+        id: {
+          name:  ccdid
+        }
+        id: {
+          name:  ampid
+        id: {
+          name:  snapid
+        }
+    }
+}
+
+# configuration for initializing the blackboard based purely on data 
+# available
+init:  {
+    # not currently supported 
+}
