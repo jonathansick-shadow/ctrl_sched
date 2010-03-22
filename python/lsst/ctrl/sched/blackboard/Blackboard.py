@@ -78,21 +78,22 @@ class Blackboard(LockProtected):
 
         self._dbfail = 0
         
-    def makeJobAvailable(self, item):
+    def makeJobAvailable(self, job):
         """
         transfer a job form the jobsPossible queue to the jobsAvailable
         queue.  If the job is not in the jobsPossible queue, an exception
-        will be raised.  The moved item will be returned.
+        will be raised.  The moved job will be returned.
         """
-        with self.queues.jobsPossible:
+        with self:
+          with self.queues.jobsPossible:
             with self.queues.jobsAvailable:
                 try:
-                    index = self.queues.jobsPossible.index(item)
+                    index = self.queues.jobsPossible.index(job)
                 except ValueError, ex:
-                    raise BlackboardUpdateError("Item not found in jobsPossible: " +
-                                                item.getProperty(Props.NAME, "(unidentified)"))
-                item = self.queues.jobsPossible.index(index)
-                jobsAvailable.append(item)
+                    raise BlackboardUpdateError("Job not found in jobsPossible: " +
+                                                job.getProperty(Props.NAME, "(unidentified)"))
+                job = self.queues.jobsPossible.pop(index)
+                self.queues.jobsAvailable.append(job)
                 
 
     def allocateNextJob(self):
@@ -101,9 +102,13 @@ class Blackboard(LockProtected):
         jobsInProgress queue.
         @return JobItem    the job that was moved 
         """
-        with self.queues.jobsAvailable:
+        with self:
+          with self.queues.jobsAvailable:
+            if self.queues.jobsAvailable.isEmpty():
+                raise EmptyQueueError("jobsAvailable")
             with self.queues.jobsInProgress:
                 self.queues.jobsAvailable.transferNextTo(self.queues.jobsInProgress)
+
 
     def markJobDone(self, job, success=True):
         """
@@ -116,12 +121,13 @@ class Blackboard(LockProtected):
                           as having failed.  
         @return JobItem    the job that was moved 
         """
-        with self.queues.jobsInProgress:
+        with self:
+          with self.queues.jobsInProgress:
             with self.queues.jobsDone:
                 try:
-                    index = self.queues.jobsInProgress.index(item)
+                    index = self.queues.jobsInProgress.index(job)
                 except ValueError, ex:
-                    raise BlackboardUpdateError("Item not found in jobsInProgress: " +
-                                                item.getProperty(Props.NAME, "(unidentified)"))
-                item = self.queues.jobsPossible.index(index)
-                jobsDone.append(item)
+                    raise BlackboardUpdateError("Job not found in jobsInProgress: " +
+                                                job.getProperty(Props.NAME, "(unidentified)"))
+                job = self.queues.jobsInProgress.pop(index)
+                self.queues.jobsDone.append(job)

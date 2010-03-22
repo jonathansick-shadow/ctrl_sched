@@ -40,6 +40,13 @@ class BlackboardItemQueue(_AbstractBase):
         """
         return self.length() == 0
 
+    def index(self, item):
+        """
+        return the position index of the given item in the queue or raise a
+        ValueError
+        """
+        self._notImplemented("index")
+
     def get(self, index=0):
         """
         return the n-th item in the queue (without removing it)
@@ -103,6 +110,8 @@ class BlackboardItemQueue(_AbstractBase):
                             may be used to determine the proper position in
                             the destination queue.
         """
+        if self.isEmpty():
+            raise EmptyQueueError()
         queue.insert(self.pop(), priority)
 
     def iterate(self):
@@ -412,6 +421,18 @@ class _FSDBBlackboardQueue(BlackboardItemQueue):
         """
         return self.length() == 0
 
+    def index(self, item):
+        """
+        return the position index of the given item in the queue or raise a
+        ValueError.  This implementation is slow as it potentially must open
+        multiple files and do a content comparison with the given item.  It
+        should not be called as part of normal us of this module.
+
+        This implementation actually throws an exception as a programmer
+        guard.
+        """
+        raise RuntimeError("Programmer Error: should not call index() on filesytem-based implementation")
+    
     def get(self, index=0):
         """
         return the n-th item in the queue (without removing it)
@@ -584,7 +605,7 @@ class _FSDBBlackboardQueue(BlackboardItemQueue):
         """
         with self._sd:
             if self.isEmpty():
-                raise EmptyBlackboardQueue()
+                raise EmptyQueueError()
         
             nextfile = self._sd.files[0]
             item = self.pop(0)
@@ -865,6 +886,13 @@ class TransactionalBlackboardQueue(BlackboardItemQueue, LockProtected):
         """
         return self._memq.length()
 
+    def index(self, item):
+        """
+        return the position index of the given item in the queue or raise a
+        ValueError
+        """
+        return self._memq.index(item)
+
     def get(self, index=0):
         """
         return the n-th item in the queue (without removing it)
@@ -986,6 +1014,8 @@ class TransactionalBlackboardQueue(BlackboardItemQueue, LockProtected):
                             may be used to determine the proper position in
                             the destination queue.
         """
+        if self.isEmpty():
+            raise EmptyQueueError()
         if isinstance(queue, LockProtected):
             with queue:
                 queue.insert(self.pop(), priority)

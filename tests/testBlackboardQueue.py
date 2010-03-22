@@ -251,6 +251,15 @@ class InMemoryBBQueueTestCase(unittest.TestCase):
         self.assertEquals(item["NAME"], "item1")
         self.assertEquals(item["pos"], 1)
 
+    def testBadPop(self):
+        self.assertRaises(IndexError, self.q.pop)
+
+        self.q.append(self._newItem("item1", {"pos": 1}))
+        self.q.append(self._newItem("item2", {"pos": 2}))
+
+        self.assertRaises(IndexError, self.q.pop, 2)
+        self.assertRaises(IndexError, self.q.pop, 3)
+
     def testInsertAt0(self):
         self.q.append(self._newItem("item1", {"pos": 1}))
         self.q.append(self._newItem("item2", {"pos": 2}))
@@ -349,6 +358,10 @@ class InMemoryBBQueueTestCase(unittest.TestCase):
             self.assertEquals(item["pos"], i)
         self.assertEquals(i, 3)
 
+    def testTransferFromEmpty(self):
+        other = bbq.InMemoryBlackboardQueue()
+        self.assertRaises(bb.EmptyQueueError, self.q.transferNextTo, other)
+        
     def testTransfer(self):
         other = bbq.InMemoryBlackboardQueue()
 

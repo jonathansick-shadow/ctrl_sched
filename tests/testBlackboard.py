@@ -94,6 +94,100 @@ class BlackboardTestCase(unittest.TestCase):
         itemfile = os.path.join(self.jsq,"v1234.paf")
         self.assert_(os.path.exists(itemfile))
         
+    def testMakeJobAvailable(self):
+
+        # test first the transfer of a non-possible job
+        item = self._jobItem("v1234")
+        self.assertRaises(bb.BlackboardUpdateError,
+                          self.bb.makeJobAvailable, item)
+
+        # now test a normal transfer
+        with self.bb:
+            self.bb.queues.jobsPossible.append(item)
+
+        self.bb.makeJobAvailable(item)
+
+        with self.bb:
+            # query queues to confirm transfer
+            self.assertEquals(self.bb.queues.jobsPossible.length(), 0)
+            self.assertEquals(self.bb.queues.jobsAvailable.length(), 1)
+            self.assertEquals(self.bb.queues.jobsAvailable.get(0).getName(),
+                              "v1234")
+
+        # confirm filesystem state
+        self.assert_(os.path.exists(os.path.join(self.jaq,"v1234.paf")))
+        self.assert_(not os.path.exists(os.path.join(self.jsq,"v1234.paf")))
+        
+    def testAllocateNextJob(self):
+
+        # test transfering a job from an empty jobsAvailable queue
+        self.assertRaises(bb.EmptyQueueError, self.bb.allocateNextJob)
+
+        # now test a normal transfer
+        with self.bb:
+            self.bb.queues.jobsAvailable.append(self._jobItem("v1234"))
+            self.bb.queues.jobsAvailable.append(self._jobItem("v1235"))
+
+        self.bb.allocateNextJob()
+
+        with self.bb:
+            # query queues to confirm transfer
+            self.assertEquals(self.bb.queues.jobsAvailable.length(), 1)
+            self.assertEquals(self.bb.queues.jobsInProgress.length(), 1)
+            self.assertEquals(self.bb.queues.jobsInProgress.get(0).getName(),
+                              "v1234")
+            self.assertEquals(self.bb.queues.jobsAvailable.get(0).getName(),
+                              "v1235")
+
+        # confirm filesystem state
+        self.assert_(os.path.exists(os.path.join(self.jpq,"v1234.paf")))
+        self.assert_(os.path.exists(os.path.join(self.jaq,"v1235.paf")))
+        self.assert_(not os.path.exists(os.path.join(self.jaq,"v1234.paf")))
+
+        # transfer 2nd job
+        self.bb.allocateNextJob()
+
+        with self.bb:
+            # query queues to confirm transfer
+            self.assertEquals(self.bb.queues.jobsAvailable.length(), 0)
+            self.assertEquals(self.bb.queues.jobsInProgress.length(), 2)
+            self.assertEquals(self.bb.queues.jobsInProgress.get(0).getName(),
+                              "v1234")
+            self.assertEquals(self.bb.queues.jobsInProgress.get(1).getName(),
+                              "v1235")
+
+        # confirm filesystem state
+        self.assert_(os.path.exists(os.path.join(self.jpq,"v1234.paf")))
+        self.assert_(os.path.exists(os.path.join(self.jpq,"v1235.paf")))
+        self.assert_(not os.path.exists(os.path.join(self.jaq,"v1234.paf")))
+        self.assert_(not os.path.exists(os.path.join(self.jaq,"v1235.paf")))
+        
+    def testMakeJobDone(self):
+
+        # test first the transfer of a non-possible job
+        item = self._jobItem("v1234")
+        self.assertRaises(bb.BlackboardUpdateError,
+                          self.bb.markJobDone, item)
+
+        # now test a normal transfer
+        with self.bb:
+            self.bb.queues.jobsInProgress.append(item)
+
+        self.bb.markJobDone(item)
+
+        with self.bb:
+            # query queues to confirm transfer
+            self.assertEquals(self.bb.queues.jobsInProgress.length(), 0)
+            self.assertEquals(self.bb.queues.jobsDone.length(), 1)
+            self.assertEquals(self.bb.queues.jobsDone.get(0).getName(),
+                              "v1234")
+
+        # confirm filesystem state
+        self.assert_(os.path.exists(os.path.join(self.jdq,"v1234.paf")))
+        self.assert_(not os.path.exists(os.path.join(self.jpq,"v1234.paf")))
+        
+        
+
 
 
 

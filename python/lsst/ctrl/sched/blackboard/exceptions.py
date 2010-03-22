@@ -67,6 +67,19 @@ class BlackboardPersistError(BlackboardUpdateError):
             msg = "IO failure while updating Blackboard"
         Exception.__init__(self, msg, wrapped)
 
+class EmptyQueueError(BlackboardAccessError):
+    """
+    a failure was encountered while attempting to retrieve an item from 
+    an Blackboard queue.
+    """
+    def __init__(self, queueName=None, msg=None):
+        if not msg:
+            msg = "Empty blackboard queue"
+            if queueName:
+                msg = "%s: %s" % (queueName, msg)
+        Exception.__init__(self, msg)
+        self.queueName = queueName
+
 class BlackboardRollbackError(BlackboardUpdateError):
     """
     a failure occurred while trying to role back changes after detecting
