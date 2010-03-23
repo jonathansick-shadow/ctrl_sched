@@ -1,5 +1,6 @@
 #<?cfg paf policy ?>
 #
+name: isr
 persist: {
     dir:   %(schedroot)/isr
     impl:  lsst.ctrl.sched.blackboard.PolicyDataQueue
@@ -9,6 +10,8 @@ listen:  {
     dataReadyEvent:      RawImageAvailable
     pipelineEvent:       ISRJob
     stopEvent:           JobOfficeStop
+    initialWait:         100 # ms
+    emptyWait:           1
 }
 
 schedule: {
