@@ -69,11 +69,11 @@ class IntegerIDFilter(IDFilter):
         self.range = (min, lim)
         self.values = None
         if values is not None:
-            if not isinstance(values, list) or not isinstance(values, tuple):
-                values = (values)
-            if any(lamda v: not isinstance(v,int), values):
+            if not isinstance(values, list):
+                values = [values]
+            if len(filter(lambda v: not isinstance(v,int), values)) > 0:
                 raise ValueError("IntegerIDFilter: non-integer value given for values: " + str(self.values))
-            self.values = tuple(values)
+            self.values = list(values)
 
     def recognize(self, id):
         """
@@ -88,13 +88,13 @@ class IntegerIDFilter(IDFilter):
 
         if any(self.range):
             if self.range[1] is None and id >= self.range[0]:
-                return str(id)
+                return id
             elif self.range[0] is None and id < self.range[1]:
-                return str(id)
+                return id
             elif id >= self.range[0] and id < self.range[1]:
-                return str(id)
+                return id
 
-        if id in self.values:
+        if self.values and id in self.values:
             return id
 
         return None
