@@ -1,0 +1,64 @@
+#<?cfg paf dictionary ?>
+#
+target: id
+
+description: "A conformant policy describes filtering constraints on an
+              integer identifier."
+
+definitions: {
+   className: {
+      type:         "string"
+      description:  "the fully-qualified python class name for the
+                     IDFilter class used to consume and use this data.
+                     The value sets the dictionary that applies: specifically,
+                     when this parameter has one of the allowed values (all
+                     of which are synonyms for each other), this dictionary 
+                     is applicable"
+      default:      "Integer"
+      minOccurs:    0
+      maxOccurs:    1        # parameter may occur only once in policy file
+      allowed: {
+         value:       "Integer"
+      }
+      allowed: {
+         value:       "IntegerIDFilter"
+      }
+      allowed: {
+         value:       "lsst.ctrl.sched.joboffice.id.IntegerIDFilter"
+      }
+   }
+
+   name: {
+      type:         "string"
+      description:  "the name of the identifier"
+      minOccurs:    1
+      maxOccurs:    1        # parameter may occur only once in policy file
+   }
+
+   min: {
+      type:         "int"
+      description:  "the minimum value that an identifier value may have in 
+                     order to pass through the filter.  If not provided, the 
+                     minimum is unbounded."
+      minOccurs:    0
+      maxOccurs:    1        # parameter may occur only once in policy file
+   }
+
+   lim: {
+      type:         "int"
+      description:  "the value that an identifier value must be less than in 
+                     order to pass through the filter.  If not provided, the 
+                     limit is unbounded."
+      minOccurs:    0
+      maxOccurs:    1        # parameter may occur only once in policy file
+   }
+
+   values: {
+      type:         "int"
+      description:  "a specific value that an identifier can have to pass
+                     through the filter.  Multiple occurances are used to 
+                     give a list of values.  This item can appear along with
+                     min and/or lim."
+      minOccurs:    0
+   }
+}

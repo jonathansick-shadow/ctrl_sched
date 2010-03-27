@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Tests of the BlackboardItem classes
+Tests of the Blackboard class
 """
 from __future__ import with_statement
 

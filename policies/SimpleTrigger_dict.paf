@@ -1,0 +1,46 @@
+#<?cfg paf dictionary ?>
+#
+target: trigger
+
+description:  "A conformant policy describes dataset filtering constraints
+               based solely on the dataset type and its identifiers."
+
+definitions: {
+
+   className: {
+      type:         "string"
+      description:  "the fully-qualified python class name for the
+                     Trigger class used to consume and use this data.
+                     The value sets the dictionary that applies: specifically,
+                     when this parameter has one of the allowed values (all
+                     of which are synonyms for each other), this dictionary 
+                     is applicable"
+      default:      "Simple"
+      minOccurs:    0
+      maxOccurs:    1        # parameter may occur only once in policy file
+      allowed: {
+         value:       "Simple"
+      }
+      allowed: {
+         value:       "SimpleTrigger"
+      }
+      allowed: {
+         value:       "lsst.ctrl.sched.joboffice.trigger.SimpleTrigger"
+      }
+   }
+
+   datasetType: {
+      type:         "string"
+      description:  "a name indicating the what contents of the dataset
+                     represent.  This may appear more than once."
+      minOccurs:    0
+   }
+
+   id: {
+      type:         "policy"
+      description   "a descripition of an identifier trigger.  There
+                     should be one 'id' value for each identifier
+                     constraint."
+      minOccurs:    0
+   }
+}

@@ -1,0 +1,27 @@
+#<?cfg paf dictionary ?>
+#
+target: dataset
+
+definitions: {
+   type: {
+      type:         "string"
+      description:  "a name indicating the what contents of the dataset
+                     represent."
+      minOccurs:    1
+      maxOccurs:    1        # parameter may occur only once in policy file
+   }
+   path: {
+      type:         "string"
+      description:  "a file path name where the dataset can be found.  If 
+                     not provided, the location is not known or applicable."
+      minOccurs:    0        # means parameter is optional
+      maxOccurs:    1        # parameter may occur only once in policy file
+   }
+   ids: {
+      type:         "policy"
+      description:  "a listing of the identifiers--their names and values--
+                     that uniquely identify the dataset."
+      minOccurs:    1
+      maxOccurs:    1        # parameter may occur only once in policy file
+   }
+}

@@ -80,7 +80,8 @@ class _BaseJobOffice(JobOffice):
             
         # instantiate parent class
         self.name = self.policy.get("name")
-        persistDir = self.policy.get("persist.dir") % (rootdir, self.name)
+        persistDir = self.policy.get("persist.dir") % {"schedroot": rootdir, 
+                                                       "name": % self.name  }
         JobOffice.__init__(self, persistDir)
 
         # logger
