@@ -11,6 +11,7 @@ import unittest
 import time
 
 import lsst.ctrl.sched.joboffice.id as id
+from lsst.pex.policy import Policy
 
 class AbstractIDFilterTestCase(unittest.TestCase):
 
@@ -33,8 +34,9 @@ class IntegerIDFilterTestCase(unittest.TestCase):
     def tearDown(self):
         pass
 
-    def testNoConstraints(self):
-        idf = id.IntegerIDFilter("CalExp")
+    def testNoConstraints(self, idf=None):
+        if not idf:
+            idf = id.IntegerIDFilter("CalExp")
         self.assertEquals(idf.name, "CalExp")
         self.assertEquals(idf.outname, "CalExp")
 
@@ -45,8 +47,9 @@ class IntegerIDFilterTestCase(unittest.TestCase):
         self.assert_(idf.recognize(3) is None)
         
 
-    def testMin(self):
-        idf = id.IntegerIDFilter("CalExp", 3)
+    def testMin(self, idf=None):
+        if not idf:
+            idf = id.IntegerIDFilter("CalExp", 3)
         self.assertEquals(idf.name, "CalExp")
 
         self.assert_(idf.recognize(2) is None)
@@ -55,8 +58,9 @@ class IntegerIDFilterTestCase(unittest.TestCase):
         self.assertEquals(idf.recognize("50"), 50)
         self.assertEquals(idf.recognize(3), 3)
 
-    def testLim(self):
-        idf = id.IntegerIDFilter("CalExp", lim=3)
+    def testLim(self, idf=None):
+        if not idf:
+            idf = id.IntegerIDFilter("CalExp", lim=3)
         self.assertEquals(idf.name, "CalExp")
 
         self.assertEquals(idf.recognize(2), 2)
@@ -65,8 +69,9 @@ class IntegerIDFilterTestCase(unittest.TestCase):
         self.assert_(idf.recognize("50") is None)
         self.assert_(idf.recognize("50") is None)
 
-    def testRange(self):
-        idf = id.IntegerIDFilter("CalExp", 0, 16)
+    def testRange(self, idf=None):
+        if not idf:
+            idf = id.IntegerIDFilter("CalExp", 0, 16)
         self.assertEquals(idf.name, "CalExp")
 
         self.assert_(idf.recognize(-1) is None)
@@ -77,8 +82,9 @@ class IntegerIDFilterTestCase(unittest.TestCase):
         self.assertEquals(idf.recognize(15), 15)
         self.assert_(idf.recognize(16) is None)
 
-    def testValues1(self):
-        idf = id.IntegerIDFilter("CalExp", values=range(16))
+    def testValues1(self, idf=None):
+        if not idf:
+            idf = id.IntegerIDFilter("CalExp", values=range(16))
         self.assertEquals(idf.name, "CalExp")
 
         self.assert_(idf.recognize(-1) is None)
@@ -89,8 +95,9 @@ class IntegerIDFilterTestCase(unittest.TestCase):
         self.assertEquals(idf.recognize(15), 15)
         self.assert_(idf.recognize(16) is None)
 
-    def testValues2(self):
-        idf = id.IntegerIDFilter("CalExp", values=[3, 6, -8])
+    def testValues2(self, idf=None):
+        if not idf:
+            idf = id.IntegerIDFilter("CalExp", values=[3, 6, -8])
         self.assertEquals(idf.name, "CalExp")
 
         self.assert_(idf.recognize(-1) is None)
@@ -103,8 +110,9 @@ class IntegerIDFilterTestCase(unittest.TestCase):
         self.assertEquals(idf.recognize(-8), -8)
         self.assert_(idf.recognize(16) is None)
 
-    def testValues3(self):
-        idf = id.IntegerIDFilter("CalExp", values=3)
+    def testValues3(self, idf=None):
+        if not idf:
+            idf = id.IntegerIDFilter("CalExp", values=3)
         self.assertEquals(idf.name, "CalExp")
 
         self.assert_(idf.recognize(-1) is None)
@@ -119,6 +127,32 @@ class IntegerIDFilterTestCase(unittest.TestCase):
         self.assertRaises(ValueError, id.IntegerIDFilter, "CalExp", values=[3, "6", -8])
         self.assertRaises(ValueError, id.IntegerIDFilter, "CalExp", values="6")
 
+    def testFromPolicy(self):
+        p = Policy()
+        p.set("name", "CalExp")
+        idf = id.IntegerIDFilter.fromPolicy(p)
+        self.testNoConstraints(idf)
+
+        idf = id.IDFilter.fromPolicy(p)
+        self.testNoConstraints(idf)
+        p.set("className", "Integer")
+        idf = id.IDFilter.fromPolicy(p)
+        self.testNoConstraints(idf)
+        p.set("className", "IntegerIDFilter")
+        idf = id.IDFilter.fromPolicy(p)
+        self.testNoConstraints(idf)
+
+        p.set("className", "lsst.ctrl.sched.joboffice.id.IntegerIDFilter")
+        self.assertRaises(RuntimeError, id.IDFilter.fromPolicy, p)
+        p.set("className", "Integer")
+        
+        p.set("min", 3)
+        idf = id.IDFilter.fromPolicy(p)
+        self.testMin(idf)
+        p.set("min", 0)
+        p.set("lim", 16)
+        idf = id.IDFilter.fromPolicy(p)
+        self.testRange(idf)
 
 
 __all__ = "AbstractIDFilterTestCase IntegerIDFilterTestCase".split()

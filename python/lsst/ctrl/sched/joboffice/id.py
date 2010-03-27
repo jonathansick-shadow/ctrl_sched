@@ -47,7 +47,7 @@ class IDFilter(_AbstractBase):
 
         cls = None
         if IDFilter.classLookup.has_key(clsname):
-            cls = classLookup[clsname]
+            cls = IDFilter.classLookup[clsname]
 
         else:
             # lookup a fully qualified class
@@ -106,7 +106,7 @@ class IntegerIDFilter(IDFilter):
         """
         name = "unknown"
         min = lim = vals = None
-        if policy.exists("name"):    name   = policy.getSting("name")
+        if policy.exists("name"):    name   = policy.getString("name")
         if policy.exists("min"):     min    = policy.getInt("min")
         if policy.exists("lim"):     max    = policy.getInt("lim")
         if policy.exists("values"):  values = policy.getArray("values")
