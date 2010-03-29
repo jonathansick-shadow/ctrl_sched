@@ -36,9 +36,9 @@ class IntegerIDFilterTestCase(unittest.TestCase):
 
     def testNoConstraints(self, idf=None):
         if not idf:
-            idf = id.IntegerIDFilter("CalExp")
-        self.assertEquals(idf.name, "CalExp")
-        self.assertEquals(idf.outname, "CalExp")
+            idf = id.IntegerIDFilter("visit")
+        self.assertEquals(idf.name, "visit")
+        self.assertEquals(idf.outname, "visit")
 
         self.assert_(idf.recognize(2) is None)
         self.assert_(idf.recognize(-1) is None)
@@ -49,8 +49,8 @@ class IntegerIDFilterTestCase(unittest.TestCase):
 
     def testMin(self, idf=None):
         if not idf:
-            idf = id.IntegerIDFilter("CalExp", 3)
-        self.assertEquals(idf.name, "CalExp")
+            idf = id.IntegerIDFilter("visit", 3)
+        self.assertEquals(idf.name, "visit")
 
         self.assert_(idf.recognize(2) is None)
         self.assert_(idf.recognize(-1) is None)
@@ -60,8 +60,8 @@ class IntegerIDFilterTestCase(unittest.TestCase):
 
     def testLim(self, idf=None):
         if not idf:
-            idf = id.IntegerIDFilter("CalExp", lim=3)
-        self.assertEquals(idf.name, "CalExp")
+            idf = id.IntegerIDFilter("visit", lim=3)
+        self.assertEquals(idf.name, "visit")
 
         self.assertEquals(idf.recognize(2), 2)
         self.assertEquals(idf.recognize(-1), -1)
@@ -71,8 +71,8 @@ class IntegerIDFilterTestCase(unittest.TestCase):
 
     def testRange(self, idf=None):
         if not idf:
-            idf = id.IntegerIDFilter("CalExp", 0, 16)
-        self.assertEquals(idf.name, "CalExp")
+            idf = id.IntegerIDFilter("visit", 0, 16)
+        self.assertEquals(idf.name, "visit")
 
         self.assert_(idf.recognize(-1) is None)
         self.assert_(idf.recognize("-1") is None)
@@ -84,8 +84,8 @@ class IntegerIDFilterTestCase(unittest.TestCase):
 
     def testValues1(self, idf=None):
         if not idf:
-            idf = id.IntegerIDFilter("CalExp", values=range(16))
-        self.assertEquals(idf.name, "CalExp")
+            idf = id.IntegerIDFilter("visit", values=range(16))
+        self.assertEquals(idf.name, "visit")
 
         self.assert_(idf.recognize(-1) is None)
         self.assert_(idf.recognize("-1") is None)
@@ -97,8 +97,8 @@ class IntegerIDFilterTestCase(unittest.TestCase):
 
     def testValues2(self, idf=None):
         if not idf:
-            idf = id.IntegerIDFilter("CalExp", values=[3, 6, -8])
-        self.assertEquals(idf.name, "CalExp")
+            idf = id.IntegerIDFilter("visit", values=[3, 6, -8])
+        self.assertEquals(idf.name, "visit")
 
         self.assert_(idf.recognize(-1) is None)
         self.assert_(idf.recognize("-1") is None)
@@ -112,8 +112,8 @@ class IntegerIDFilterTestCase(unittest.TestCase):
 
     def testValues3(self, idf=None):
         if not idf:
-            idf = id.IntegerIDFilter("CalExp", values=3)
-        self.assertEquals(idf.name, "CalExp")
+            idf = id.IntegerIDFilter("visit", values=3)
+        self.assertEquals(idf.name, "visit")
 
         self.assert_(idf.recognize(-1) is None)
         self.assert_(idf.recognize("-1") is None)
@@ -124,8 +124,8 @@ class IntegerIDFilterTestCase(unittest.TestCase):
 
     def testValues4(self, idf=None):
         if not idf:
-            idf = id.IntegerIDFilter("CalExp", 0, 16, values=[20,25])
-        self.assertEquals(idf.name, "CalExp")
+            idf = id.IntegerIDFilter("visit", 0, 16, values=[20,25])
+        self.assertEquals(idf.name, "visit")
 
         self.assert_(idf.recognize(-1) is None)
         self.assert_(idf.recognize("-1") is None)
@@ -139,13 +139,13 @@ class IntegerIDFilterTestCase(unittest.TestCase):
         self.assertEquals(idf.recognize(25), 25)
 
     def testBadValues(self):
-        self.assertRaises(ValueError, id.IntegerIDFilter, "CalExp", values="4 9 7".split())
-        self.assertRaises(ValueError, id.IntegerIDFilter, "CalExp", values=[3, "6", -8])
-        self.assertRaises(ValueError, id.IntegerIDFilter, "CalExp", values="6")
+        self.assertRaises(ValueError, id.IntegerIDFilter, "visit", values="4 9 7".split())
+        self.assertRaises(ValueError, id.IntegerIDFilter, "visit", values=[3, "6", -8])
+        self.assertRaises(ValueError, id.IntegerIDFilter, "visit", values="6")
 
     def testFromPolicy(self):
         p = Policy()
-        p.set("name", "CalExp")
+        p.set("name", "visit")
         idf = id.IntegerIDFilter.fromPolicy(p)
         self.testNoConstraints(idf)
 

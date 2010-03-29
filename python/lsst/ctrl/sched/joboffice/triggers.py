@@ -51,7 +51,7 @@ class Trigger(_AbstractBase):
 
         cls = None
         if Trigger.classLookup.has_key(clsname):
-            cls = classLookup[clsname]
+            cls = Trigger.classLookup[clsname]
 
         else:
             # lookup a fully qualified class
@@ -66,27 +66,36 @@ class SimpleTrigger(Trigger):
     a Trigger implementation
     """
 
-    def __init__(self, datasetType=None, **ids):
+    def __init__(self, datasetType=None, ids=None, **kw):
         """
         @param datasetType   the type of dataset to look for.  This can 
                                either be a single type name or list of 
                                names
         @param ids           a dictionary mapping identifier names to 
                                IDFilter instances
+        @param *             additional named parameters are taken as 
+                               identifiers to be set with the given values
         """
-        if dataset is not None and not isinstance(datasetType, list):
+        if datasetType is not None and not isinstance(datasetType, list):
             datasetType = [datasetType]
         self.dataTypes = datasetType
 
-        self.ids = None
+        self.idfilts = None
+        if kw:
+            if ids is None:
+                ids = {}
+            for key in kw.keys():
+                ids[key] = kw[key]
+
         if ids: 
-            self.ids = {}
+            self.idfilts = {}
             for id in ids.keys():
-                self.ids[id] = ids[id]
-                if isinstance(self.ids[id], list):
-                    self.ids[id] = list( self.ids[id] )
+                self.idfilts[id] = ids[id]
+                if isinstance(self.idfilts[id], list):
+                    self.idfilts[id] = list( self.idfilts[id] )
                 else:
-                    self.ids[id] = [ self.ids[id] ]
+                    self.idfilts[id] = [ self.idfilts[id] ]
+
         
     def recognize(self, dataset):
         """
@@ -95,25 +104,30 @@ class SimpleTrigger(Trigger):
         recognized.
         @param dataset    a Dataset instance
         """
-        if self.datasetTypes is not None and \
-           dataset.type not in self.datasetTypes:
+        if self.dataTypes is not None and \
+           dataset.type not in self.dataTypes:
             return None
     
         # attempt to recognize the ids
-        if self.ids is not None and dataset.ids is not None:
-            # iterate through the dataset identifiers checking the ones
-            # we're interested in
-            for idname in dataset.ids.keys():
-                if self.ids.has_key(idname):
-                    # we're looking for this one; the identifier is 
-                    # recognized if any of filters return True
-                    recognized = False
-                    for filt in self.idfilts[id]:
-                        if filt.recognize(id):
-                            recognized = True
-                            break
-                    if not found:
-                        return None
+        if self.idfilts is not None:
+            if dataset.ids is None:
+                return None
+            
+            # iterate through the identifier filters, passing through
+            # the appropriate identifiers from the dataset
+            for idname in self.idfilts.keys():
+                if not dataset.ids.has_key(idname):
+                    return None
+                
+                # we're looking for this one; the identifier is 
+                # recognized if any of filters return True
+                recognized = False
+                for filt in self.idfilts[idname]:
+                    if filt.recognize(dataset.ids[idname]) is not None:
+                        recognized = True
+                        break
+                if not recognized:
+                    return None
 
         # all tests pass; return this dataset
         return dataset
@@ -125,13 +139,13 @@ class SimpleTrigger(Trigger):
                             simple trigger
         """
         dataTypes = None
-        if triggerPolicy.exists("datasetType"):
-            dataTypes = triggerPolicy.getArray("datasetType")
+        if policy.exists("datasetType"):
+            dataTypes = policy.getArray("datasetType")
 
         idfilts = None
-        if triggerPolicy.exists("id"):
+        if policy.exists("id"):
             idfilts = {} 
-            idps = triggerPolicy.getArray("id")
+            idps = policy.getArray("id")
             for idp in idps:
                 idfilt = IDFilter.fromPolicy(idp)
                 if not idfilts.has_key(idfilt.name):

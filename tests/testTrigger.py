@@ -12,7 +12,7 @@ import time
 
 from lsst.ctrl.sched.joboffice.triggers import Trigger, SimpleTrigger
 from lsst.ctrl.sched.joboffice.dataset import Dataset
-import lsst.ctrl.sched.joboffice.id as id
+from lsst.ctrl.sched.joboffice.id import IDFilter, IntegerIDFilter
 from lsst.pex.policy import Policy
 
 class AbstractTriggerTestCase(unittest.TestCase):
@@ -23,19 +23,19 @@ class AbstractTriggerTestCase(unittest.TestCase):
         pass
 
     def testNoCtor(self):
-        self.assertRaises(RuntimeError, trig.Trigger)
+        self.assertRaises(RuntimeError, Trigger)
 
     def testNoRecognizeImpl(self):
         t = Trigger(fromSubclass=True)
-        self.assert_(t.recognize() is None)
+        self.assert_(t.recognize(None) is None)
 
 class SimpleTriggerTestCase(unittest.TestCase):
 
     def setUp(self):
         self.type = "CalExp"
-        self.ids = [ id.IntegerIDFilter("visit", values=88), 
-                     id.IntegerIDFilter("ccd", 0, 9), 
-                     id.IntegerIDFilter("amp", 0, 16)       ]
+        self.ids = [ IntegerIDFilter("visit", values=88), 
+                     IntegerIDFilter("ccd", 0, 9), 
+                     IntegerIDFilter("amp", 0, 16)       ]
         self.idd = {}
         for id in self.ids:
             self.idd[id.name] = id
@@ -43,8 +43,9 @@ class SimpleTriggerTestCase(unittest.TestCase):
     def tearDown(self):
         pass
 
-    def testDatasetType(self):
-        t = SimpleTrigger(self.type)
+    def testDatasetType(self, t=None):
+        if not t:
+            t = SimpleTrigger(self.type)
 
         ds = Dataset("goob")
         self.assert_(not t.recognize(ds))
@@ -52,8 +53,95 @@ class SimpleTriggerTestCase(unittest.TestCase):
         ds = Dataset(self.type)
         self.assert_(t.recognize(ds))
 
-    def testRecognizeIds(self):
-        pass
+    def testDatasetType2(self, t=None):
+        if not t:
+            t = SimpleTrigger([self.type, "Decal"])
+
+        ds = Dataset("goob")
+        self.assert_(not t.recognize(ds))
+
+        ds = Dataset(self.type)
+        self.assert_(t.recognize(ds))
+        ds = Dataset("Decal")
+        self.assert_(t.recognize(ds))
+
+
+    def testIds(self, t=None):
+        if not t:
+            t = SimpleTrigger(self.type, self.idd)
+        
+        ds = Dataset(self.type)
+        self.assert_(not t.recognize(ds))
+
+        ds = Dataset(self.type, ccd=5, amp=0)
+        self.assert_(not t.recognize(ds))
+
+        ds = Dataset(self.type, ccd=5, amp=0, visit=88)
+        self.assert_(t.recognize(ds))
+
+        ds = Dataset(self.type, ccd=5, amp=0, visit=88, filt='r')
+        self.assert_(t.recognize(ds))
+
+        ds = Dataset(self.type, ccd=5, amp=0, visit=89, filt='r')
+        self.assert_(not t.recognize(ds))
+
+    def testIds2(self, t=None):
+        if not t:
+            t = SimpleTrigger(ids=self.idd)
+        
+        ds = Dataset(self.type)
+        self.assert_(not t.recognize(ds))
+
+        ds = Dataset(self.type, ccd=5, amp=0)
+        self.assert_(not t.recognize(ds))
+
+        ds = Dataset(self.type, ccd=5, amp=0, visit=88)
+        self.assert_(t.recognize(ds))
+
+        ds = Dataset(self.type, ccd=5, amp=0, visit=88, filt='r')
+        self.assert_(t.recognize(ds))
+
+        ds = Dataset(self.type, ccd=5, amp=0, visit=89, filt='r')
+        self.assert_(not t.recognize(ds))
+
+    def testFromPolicy(self):
+        p = Policy()
+        p.set("datasetType", self.type)
+        trig = SimpleTrigger.fromPolicy(p)
+        self.testDatasetType(trig)
+
+        trig = Trigger.fromPolicy(p)
+        self.testDatasetType(trig)
+        p.set("className", "Simple")
+        trig = Trigger.fromPolicy(p)
+        self.testDatasetType(trig)
+        p.set("className", "SimpleTrigger")
+        trig = Trigger.fromPolicy(p)
+        self.testDatasetType(trig)
+
+        p.set("className", "lsst.ctrl.sched.joboffice.trigger.SimpleTrigger")
+        self.assertRaises(RuntimeError, Trigger.fromPolicy, p)
+        p.set("className", "Simple")
+
+        idp = Policy()
+        idp.set("name", "visit")
+        idp.set("values", 88)
+        p.add("id", idp)
+        idp = Policy()
+        idp.set("name", "ccd")
+        idp.set("lim", 9)
+        p.add("id", idp)
+        idp = Policy()
+        idp.set("name", "amp")
+        idp.set("min", 0)
+        idp.set("lim", 16)
+        p.add("id", idp)
+
+        trig = SimpleTrigger.fromPolicy(p)
+        # pdb.set_trace()
+        self.testIds(trig)
+
+
 
 
 __all__ = "AbstractTriggerTestCase SimpleTriggerTestCase".split()

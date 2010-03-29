@@ -25,6 +25,8 @@ class Dataset(object):
                          path is not known/applicable
         @param ids     a dictionary of identifiers, mapping names to values.
                          the type of the identifier is context specific.
+        @param *       additional named parameters are taken as 
+                         identifiers to be set with the given values
         """
         self.type = type
         self.path = path
@@ -35,7 +37,7 @@ class Dataset(object):
         if kw:
             if self.ids is None:
                 self.ids = {}
-            for key in kw:
+            for key in kw.keys():
                 self.ids[key] = kw[key]
 
     @staticmethod
