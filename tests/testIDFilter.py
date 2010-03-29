@@ -124,7 +124,7 @@ class IntegerIDFilterTestCase(unittest.TestCase):
 
     def testValues4(self, idf=None):
         if not idf:
-            idf = id.IntegerIDFilter("CalExp", 0, 16, values=20)
+            idf = id.IntegerIDFilter("CalExp", 0, 16, values=[20,25])
         self.assertEquals(idf.name, "CalExp")
 
         self.assert_(idf.recognize(-1) is None)
@@ -171,6 +171,7 @@ class IntegerIDFilterTestCase(unittest.TestCase):
         self.testRange(idf)
         p.set("values", 20)
         p.add("values", 25)
+        idf = id.IDFilter.fromPolicy(p)
         self.testValues4(idf)
 
 

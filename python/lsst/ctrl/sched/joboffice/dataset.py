@@ -4,8 +4,6 @@ classes for describing datasets.
 from __future__ import with_statement
 
 from lsst.pex.policy import Policy
-from lsst.pex.logging import Log
-from trigger import Trigger
 from lsst.ctrl.sched.blackboard.base import _AbstractBase
 
 import os
@@ -19,7 +17,7 @@ class Dataset(object):
     variables 'type' (a string) and ids (a dictionary), respectively.
     """
 
-    def __init__(self, type, path=None, **ids):
+    def __init__(self, type, path=None, ids=None, **kw):
         """
         create the dataset
         @param type    the dataset type name
@@ -29,10 +27,16 @@ class Dataset(object):
                          the type of the identifier is context specific.
         """
         self.type = type
-        self.ids = None
-        if ids is not None:
-            self.ids = dict(ids)
         self.path = path
+
+        self.ids = None
+        if ids:
+            self.ids = dict(ids)
+        if kw:
+            if self.ids is None:
+                self.ids = {}
+            for key in kw:
+                self.ids[key] = kw[key]
 
     @staticmethod
     def fromPolicy(policy):
@@ -46,8 +50,8 @@ class Dataset(object):
         if policy.exists("ids"):  
             idp = policy.getPolicy("ids")
             ids = {}
-            for name in policy.paramNames():
-                id[name] = policy.get(name)
+            for name in idp.paramNames():
+                ids[name] = idp.get(name)
 
         return Dataset(type, path, ids)
 
