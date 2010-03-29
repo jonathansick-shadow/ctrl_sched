@@ -122,6 +122,22 @@ class IntegerIDFilterTestCase(unittest.TestCase):
         self.assert_(idf.recognize(0) is None)
         self.assert_(idf.recognize(15) is None)
 
+    def testValues4(self, idf=None):
+        if not idf:
+            idf = id.IntegerIDFilter("CalExp", 0, 16, values=20)
+        self.assertEquals(idf.name, "CalExp")
+
+        self.assert_(idf.recognize(-1) is None)
+        self.assert_(idf.recognize("-1") is None)
+        self.assert_(idf.recognize("50") is None)
+        self.assertEquals(idf.recognize(3), 3)
+        self.assertEquals(idf.recognize(0), 0)
+        self.assertEquals(idf.recognize(15), 15)
+        self.assert_(idf.recognize(16) is None)
+        self.assertEquals(idf.recognize(20), 20)
+        self.assert_(idf.recognize(23) is None)
+        self.assertEquals(idf.recognize(25), 25)
+
     def testBadValues(self):
         self.assertRaises(ValueError, id.IntegerIDFilter, "CalExp", values="4 9 7".split())
         self.assertRaises(ValueError, id.IntegerIDFilter, "CalExp", values=[3, "6", -8])
@@ -153,6 +169,9 @@ class IntegerIDFilterTestCase(unittest.TestCase):
         p.set("lim", 16)
         idf = id.IDFilter.fromPolicy(p)
         self.testRange(idf)
+        p.set("values", 20)
+        p.add("values", 25)
+        self.testValues4(idf)
 
 
 __all__ = "AbstractIDFilterTestCase IntegerIDFilterTestCase".split()

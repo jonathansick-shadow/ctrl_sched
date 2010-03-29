@@ -108,7 +108,7 @@ class IntegerIDFilter(IDFilter):
         min = lim = vals = None
         if policy.exists("name"):    name   = policy.getString("name")
         if policy.exists("min"):     min    = policy.getInt("min")
-        if policy.exists("lim"):     max    = policy.getInt("lim")
+        if policy.exists("lim"):     lim    = policy.getInt("lim")
         if policy.exists("values"):  values = policy.getArray("values")
 
         return IntegerIDFilter(name, min, lim, vals)
