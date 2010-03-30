@@ -34,9 +34,13 @@ class Trigger(_AbstractBase):
         """
         return self.isstatic
 
-    def listDatasets(self):
+    def listDatasets(self, template=None):
         """
         return a list of all the datasets that will be returned by recognize()
+        @param template    a Dataset instance representing a template for 
+                              identifiers and types not constrained by this 
+                              trigger.  If the given Dataset is not recognized,
+                              an empty set is returned.
         """
         self._notImplemented("listDatasets")
     
@@ -94,6 +98,8 @@ class SimpleTrigger(Trigger):
         if datasetType is not None and not isinstance(datasetType, list):
             datasetType = [datasetType]
         self.dataTypes = datasetType
+        if self.dataTypes is not None:
+            self.isstatic = True
 
         self.idfilts = None
         if kw:
@@ -106,6 +112,8 @@ class SimpleTrigger(Trigger):
             self.idfilts = {}
             for id in ids.keys():
                 self.idfilts[id] = ids[id]
+                if self.isstatic and not self.idfilts[id].hasStaticValueSet():
+                    self.isstatic = False
                 if isinstance(self.idfilts[id], list):
                     self.idfilts[id] = list( self.idfilts[id] )
                 else:

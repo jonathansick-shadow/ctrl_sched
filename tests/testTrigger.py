@@ -104,6 +104,33 @@ class SimpleTriggerTestCase(unittest.TestCase):
         ds = Dataset(self.type, ccd=5, amp=0, visit=89, filt='r')
         self.assert_(not t.recognize(ds))
 
+    def testListDatasets(self):
+        t = SimpleTrigger(self.type, self.idd)
+        self.assert_(t.hasPredictableDatasetList())
+        dss = t.listDataset()
+        self.assertEquals(len(dss), 8*16*1)
+        self.assertEquals(dss[0].ids["visit"], 88)
+        for ds in dss:
+            self.assert_(t.recognize(ds), "failed to recognize " + str(ds))
+
+        ds = Dataset(self.type, ccd=5, amp=0, visit=89, filt='r')
+        dss = t.listDataset(ds)
+        self.assertEquals(len(dss), 8*16*1)
+        self.assertEquals(dss[0].ids["visit"], 88)
+        self.assert_(dss[0].ids.has_key("filt"))
+        self.assertEquals(dss[0].ids["filt"], 'r')
+
+        idd = dict(self.idd)
+        idd["visit"] = IntegerIDFilter("visit", min=88)
+        t = SimpleTrigger(self.type, idd)
+        self.assert_(not t.hasPredictableDatasetList())
+        dss = t.listDataset(ds)
+        self.assertEquals(len(dss), 8*16*1)
+        self.assertEquals(dss[0].ids["visit"], 89)
+        self.assert_(dss[0].ids.has_key("filt"))
+        self.assertEquals(dss[0].ids["filt"], 'r')
+
+
     def testFromPolicy(self):
         p = Policy()
         p.set("datasetType", self.type)
