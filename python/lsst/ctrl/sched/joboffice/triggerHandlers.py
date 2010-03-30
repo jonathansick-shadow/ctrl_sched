@@ -60,13 +60,22 @@ class FilesetTriggerHandler(TriggerHandler):
     def getNeededDatasetCount(self):
         return len(self.dids)
 
+    def isNeededDataset(self, dataset):
+        """
+        return true if the given dataset is needed for this job
+        """
+        return dataset.toString(False) in self.dids
+
     def addDataset(self, dataset):
         """
         note that the given dataset is a trigger for this job.
+        @return bool   True if the dataset was needed but not added until now
         """
         id = dataset.toString(False)
         if id in self.dids:
             self.dids.remove(id)
+            return True
+        return False
 
     def isReady(self):
         """

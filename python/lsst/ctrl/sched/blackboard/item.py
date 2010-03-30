@@ -406,6 +406,17 @@ class JobItem(BasicBlackboardItem):
         """
         self.triggerHandler = handler
 
+    def setNeededDataset(self, dataset):
+        """
+        note that a dataset that is one of the required triggers for this
+        job is available.
+        @param dataset    the trigger dataset that is ready.
+        @return bool   True if the dataset was needed but not added until now
+        """
+        if self.triggerHandler:
+            return self.triggerHandler.addDataset(dataset)
+        return False
+
     def isReady(self):
         """
         return True if all the trigger files have been produced and the job is

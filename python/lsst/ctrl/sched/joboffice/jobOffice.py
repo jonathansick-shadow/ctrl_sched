@@ -159,7 +159,10 @@ class _BaseJobOffice(JobOffice):
         @return bool    true if the event was processed.
         """
         dsps = event.getProperties.getArray("dataset")
-        
+        for dsp in dsps:
+            ds = Dataset.fromPolicy(dsp)
+            # if recognized...
+            
         self._notImplemented("processDataEvent")
 
     def processDataset(self, dataset):
