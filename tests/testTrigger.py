@@ -34,7 +34,7 @@ class SimpleTriggerTestCase(unittest.TestCase):
     def setUp(self):
         self.type = "CalExp"
         self.ids = [ IntegerIDFilter("visit", values=88), 
-                     IntegerIDFilter("ccd", 0, 9), 
+                     IntegerIDFilter("ccd", 0, 8), 
                      IntegerIDFilter("amp", 0, 16)       ]
         self.idd = {}
         for id in self.ids:
@@ -107,26 +107,26 @@ class SimpleTriggerTestCase(unittest.TestCase):
     def testListDatasets(self):
         t = SimpleTrigger(self.type, self.idd)
         self.assert_(t.hasPredictableDatasetList())
-        dss = t.listDataset()
+        dss = t.listDatasets()
         self.assertEquals(len(dss), 8*16*1)
         self.assertEquals(dss[0].ids["visit"], 88)
         for ds in dss:
             self.assert_(t.recognize(ds), "failed to recognize " + str(ds))
 
-        ds = Dataset(self.type, ccd=5, amp=0, visit=89, filt='r')
-        dss = t.listDataset(ds)
+        ds = Dataset(self.type, ccd=5, amp=0, visit=88, filt='r')
+        dss = t.listDatasets(ds)
         self.assertEquals(len(dss), 8*16*1)
         self.assertEquals(dss[0].ids["visit"], 88)
         self.assert_(dss[0].ids.has_key("filt"))
         self.assertEquals(dss[0].ids["filt"], 'r')
 
         idd = dict(self.idd)
-        idd["visit"] = IntegerIDFilter("visit", min=88)
+        idd["visit"] = IntegerIDFilter("visit", min=87)
         t = SimpleTrigger(self.type, idd)
         self.assert_(not t.hasPredictableDatasetList())
-        dss = t.listDataset(ds)
+        dss = t.listDatasets(ds)
         self.assertEquals(len(dss), 8*16*1)
-        self.assertEquals(dss[0].ids["visit"], 89)
+        self.assertEquals(dss[0].ids["visit"], 88)
         self.assert_(dss[0].ids.has_key("filt"))
         self.assertEquals(dss[0].ids["filt"], 'r')
 

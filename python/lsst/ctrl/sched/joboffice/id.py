@@ -145,11 +145,14 @@ class IntegerIDFilter(IDFilter):
         be returned by recognize() (except None).  This may raise an 
         exception if hasStaticValueSet() returns False.
         """
-        if len(filter(lambda r: r is not None, self.range)) > 0 and \
-           len(filter(lambda r: r is None, self.range)) > 0:
+        nones = len(filter(lambda r: r is None, self.range))
+        if nones == 1:
             raise RuntimeError("identifier set (%s) is not closed" % self.name)
 
-        out = range(self.range[0], self.range[1])
+        if nones == 0:
+            out = range(self.range[0], self.range[1])
+        else:
+            out = []
         if self.values:
             out.extend(self.values)
             out.sort()

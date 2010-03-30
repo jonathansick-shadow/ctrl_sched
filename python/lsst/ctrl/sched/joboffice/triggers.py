@@ -6,9 +6,10 @@ from __future__ import with_statement
 from lsst.pex.policy import Policy
 from lsst.pex.logging import Log
 from id import IDFilter
+from dataset import Dataset
 from lsst.ctrl.sched.blackboard.base import _AbstractBase
 
-import os
+import os, copy
 
 class Trigger(_AbstractBase):
     """
@@ -95,6 +96,7 @@ class SimpleTrigger(Trigger):
         @param *             additional named parameters are taken as 
                                identifiers to be set with the given values
         """
+        Trigger.__init__(self, fromSubclass=True)
         if datasetType is not None and not isinstance(datasetType, list):
             datasetType = [datasetType]
         self.dataTypes = datasetType
@@ -172,23 +174,28 @@ class SimpleTrigger(Trigger):
             # the template is used to set values of identifiers not of 
             # interest to this filter and identifiers that can't be 
             # reduced to a closed set.  
-            if not self.recognized(template):
-                return out
+            if not self.recognize(template):
+                return []
             types = [ template.type ]
         else:
-            if not self.datasetTypes:
+            if not self.dataTypes:
                 raise RuntimeError("can't close set without template dataset")
-            types = list(self.datasetTypes)
+            types = list(self.dataTypes)
             template = Dataset(types[0])
 
         # get a list of allowed id values
         idvals = {}
-        for id in self.ids.keys():
-            if self.ids.hasStaticValueSet():
-                idvals[id] = self.ids.allowedValues()
-            elif not template.ids.has_key(id):
-                # template datsets unable to close the set
-                raise RuntimeError("can't close identifier set for " + id)
+        for id in self.idfilts.keys():
+            idvals[id] = []
+            for filt in self.idfilts[id]:
+                if filt.hasStaticValueSet():
+                    idvals[id].extend(filt.allowedValues())
+                elif not template.ids.has_key(id):
+                    # template datsets unable to close the set
+                    raise RuntimeError("can't close identifier set for " + id)
+                else:
+                    del idvals[id]
+                    break
 
         # these are the idnames, then, we are varying; and the number of 
         # values for each.  The total number of datasets returned will then
