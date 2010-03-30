@@ -58,6 +58,17 @@ class DatasetTestCase(unittest.TestCase):
         self.assertEquals(ds.ids["ccdid"], ccdid)
         self.assertEquals(ds.ids["visitid"], visitid)
 
+    def testToString(self):
+        type = "CalExp"
+        path = "goob/CalExp-v88-c12.fits"
+        ccdid = 12
+        visitid = 88
+
+        ds = Dataset(type, ids={"ccdid": ccdid, "visitid": visitid })
+        self.assertEquals(ds.toString(),
+                          "%s-ccdid%s-visitid%s" % (type, ccdid, visitid))
+        # print str(ds)
+
     def testFromPolicy(self):
         type = "CalExp"
         path = "goob/CalExp-v88-c12.fits"

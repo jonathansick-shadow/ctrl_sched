@@ -40,6 +40,22 @@ class Dataset(object):
             for key in kw.keys():
                 self.ids[key] = kw[key]
 
+    def toString(self, usePath=True):
+        """
+        return a string form if this dataset's contents
+        @param usePath   if true, the path will be used available
+        """
+        if usePath and self.path:
+            return self.path
+        out = self.type
+        if self.ids is not None:
+            for id in self.ids:
+                out += "-%s%s" % (id, self.ids[id])
+        return out
+
+    def __str__(self):
+        return self.toString()
+
     @staticmethod
     def fromPolicy(policy):
         """
