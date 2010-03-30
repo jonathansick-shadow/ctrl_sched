@@ -395,8 +395,24 @@ class JobItem(BasicBlackboardItem):
         if files:
             impl._setProperty(self.FILES, files)
 
+        self.triggerHandler = None
+
     def getFiles(self):
         return self.getProperty(self.FILES)
+
+    def setTriggerHandler(self, handler):
+        """
+        attach a trigger handler instance to this job.
+        """
+        self.triggerHandler = handler
+
+    def isReady(self):
+        """
+        return True if all the trigger files have been produced and the job is
+        ready to be scheduled to a pipeline.
+        """
+        return self.triggerHandler is not None and self.triggerHandler.isReady()
+        
 
     @staticmethod
     def createItem(name, files=None, props=None):
