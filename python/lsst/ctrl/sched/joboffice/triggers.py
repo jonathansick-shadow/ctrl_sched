@@ -112,12 +112,14 @@ class SimpleTrigger(Trigger):
             self.idfilts = {}
             for id in ids.keys():
                 self.idfilts[id] = ids[id]
-                if self.isstatic and not self.idfilts[id].hasStaticValueSet():
-                    self.isstatic = False
                 if isinstance(self.idfilts[id], list):
                     self.idfilts[id] = list( self.idfilts[id] )
                 else:
                     self.idfilts[id] = [ self.idfilts[id] ]
+                if self.isstatic and \
+                   len(filter(lambda i: not i.hasStaticValueSet(), 
+                              self.idfilts[id])) > 0:
+                    self.isstatic = False
 
         
     def recognize(self, dataset):
