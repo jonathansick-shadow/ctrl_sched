@@ -111,7 +111,8 @@ class IntegerIDFilter(IDFilter):
                 raise ValueError("IntegerIDFilter: non-integer value given for values: " + str(self.values))
             self.values = list(values)
 
-        if any(self.range) and any(filter(lambda r: r is None, self.range)):
+        if len(filter(lambda r: r is not None, self.range)) > 0 and \
+           len(filter(lambda r: r is None, self.range)) > 0:
             self.isstatic = False
 
     def recognize(self, id):
@@ -144,7 +145,8 @@ class IntegerIDFilter(IDFilter):
         be returned by recognize() (except None).  This may raise an 
         exception if hasStaticValueSet() returns False.
         """
-        if any(self.range) and any(filter(lambda r: r is None, self.range)):
+        if len(filter(lambda r: r is not None, self.range)) > 0 and \
+           len(filter(lambda r: r is None, self.range)) > 0:
             raise RuntimeError("identifier set (%s) is not closed" % self.name)
 
         out = range(self.range[0], self.range[1])
