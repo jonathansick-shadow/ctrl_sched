@@ -138,6 +138,21 @@ class IntegerIDFilterTestCase(unittest.TestCase):
         self.assert_(idf.recognize(23) is None)
         self.assertEquals(idf.recognize(25), 25)
 
+    def testAllowed(self):
+        idf = id.IntegerIDFilter("visit", 0, 16, values=[20,25])
+        self.assert_(idf.hasStaticValueSet())
+
+        vals = idf.allowedValues()
+        self.assertEquals(len(vals), 18)
+        self.assertEquals(vals[0], 0)
+        self.assertEquals(vals[-3], 15)
+        self.assertEquals(vals[-2], 20)
+        self.assertEquals(vals[-1], 25)
+
+        idf = id.IntegerIDFilter("visit", 0)
+        self.assert_(not idf.hasStaticValueSet())
+        self.assertRaises(RuntimeError, idf.allowedValues)
+
     def testBadValues(self):
         self.assertRaises(ValueError, id.IntegerIDFilter, "visit", values="4 9 7".split())
         self.assertRaises(ValueError, id.IntegerIDFilter, "visit", values=[3, "6", -8])

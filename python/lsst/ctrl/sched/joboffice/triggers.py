@@ -23,6 +23,23 @@ class Trigger(_AbstractBase):
         instantiate this base class.  
         """
         self._checkAbstract(fromSubclass, "Trigger")
+        self.isstatic = False
+
+    def hasPredictableDatasetList(self):
+        """
+        return True if the list of datasets returned by listDatasets() 
+        should be considered the complete list of datasets that can trigger
+        this filter.  If False, calling listDatasets() may raise an 
+        exception if a set cannot be generated. 
+        """
+        return self.isstatic
+
+    def listDatasets(self):
+        """
+        return a list of all the datasets that will be returned by recognize()
+        """
+        self._notImplemented("listDatasets")
+    
 
     def recognize(self, dataset):
         """
@@ -59,8 +76,6 @@ class Trigger(_AbstractBase):
 
         return cls.fromPolicy(policy)
         
-        
-
 class SimpleTrigger(Trigger):
     """
     a Trigger implementation
@@ -131,6 +146,78 @@ class SimpleTrigger(Trigger):
 
         # all tests pass; return this dataset
         return dataset
+
+    def listDatasets(self, template=None):
+        """
+        return a list of all the datasets that will be returned by recognize().
+        This implementation returns a set of datasets made up of all 
+        combinations of the dataset types and allowed identifiers (for those
+        identifiers that have a closed set of values).  
+        @param template    a Dataset instance representing a template for 
+                              identifiers and types not constrained by this 
+                              trigger.  If the given Dataset is not recognized,
+                              an empty set is returned.
+        """
+        if template:
+            # the template is used to set values of identifiers not of 
+            # interest to this filter and identifiers that can't be 
+            # reduced to a closed set.  
+            if not self.recognized(template):
+                return out
+            types = [ template.type ]
+        else:
+            if not self.datasetTypes:
+                raise RuntimeError("can't close set without template dataset")
+            types = list(self.datasetTypes)
+            template = Dataset(types[0])
+
+        # get a list of allowed id values
+        idvals = {}
+        for id in self.ids.keys():
+            if self.ids.hasStaticValueSet():
+                idvals[id] = self.ids.allowedValues()
+            elif not template.ids.has_key(id):
+                # template datsets unable to close the set
+                raise RuntimeError("can't close identifier set for " + id)
+
+        # these are the idnames, then, we are varying; and the number of 
+        # values for each.  The total number of datasets returned will then
+        # be len(types) * PI(valcnt.values())
+        idnames = idvals.keys()
+        valcnt = {}
+        for id in idnames:
+            valcnt[id] = len(idvals[id])
+
+        out = []
+        for type in types:
+            # initialize our multidimensional iterator
+            iter = valcnt.fromkeys(idnames, 0)
+
+            # quit adding when the last axis of the iterator meets its limit
+            while iter[idnames[-1]] < valcnt[idnames[-1]]:
+
+                # clone the template
+                ds = copy.deepcopy(template)
+                ds.type = type
+                if ds.ids is None:
+                    ds.ids = {}
+
+                # set the values of the identifiers in the dataset
+                for id in iter.keys():
+                    ds.ids[id] = idvals[id][iter[id]]
+                out.append(ds)
+
+                # increment the iterator
+                for i in xrange(len(idnames)):
+                    iter[idnames[i]] += 1
+                    if iter[idnames[i]] < valcnt[idnames[i]]:
+                        break
+                    if i == len(idnames) - 1:
+                        break
+                    iter[idnames[i]] = 0
+
+        return out
+    
 
     @staticmethod
     def fromPolicy(policy):

@@ -3,8 +3,8 @@ jobOffice implementations
 """
 from __future__ import with_statement
 
-from blackboard import Blackboard, Props,
-from blackboard.base import _AbstractBase
+from lsst.ctrl.sched.blackboard import Blackboard, Props,
+from lsst.ctrl.sched.blackboard.base import _AbstractBase
 from lsst.ctrl.events import EventSystem
 from lsst.pex.policy import Policy, DefaultPolicyFile
 from lsst.pex.logging import Log
@@ -158,7 +158,17 @@ class _BaseJobOffice(JobOffice):
         @param event    the data event.  
         @return bool    true if the event was processed.
         """
+        dsps = event.getProperties.getArray("dataset")
+        
         self._notImplemented("processDataEvent")
+
+    def processDataset(self, dataset):
+        """
+        process an event indicating that one or more datasets are available.
+        @param event    the data event.  
+        @return bool    true if the event was processed.
+        """
+        self._notImplemented("processDataset")
 
     def processDataEvents(self):
         """
