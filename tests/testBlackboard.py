@@ -10,6 +10,7 @@ import sys
 import unittest
 import time
 
+from lsst.ctrl.sched import Dataset
 import lsst.ctrl.sched.blackboard as bb
 
 testdir = os.path.join(os.environ["CTRL_SCHED_DIR"], "tests")
@@ -52,10 +53,12 @@ class BlackboardTestCase(unittest.TestCase):
                          "queue order file not found: " + path)
 
     def _datasetItem(self, name, type=""):
-        return bb.DataProductItem.createItem(name, type)
+        ds = Dataset(type, name)
+        return bb.DataProductItem.createItem(ds)
 
     def _jobItem(self, name, type=""):
-        return bb.JobItem.createItem(name, type)
+        ds = Dataset(type)
+        return bb.JobItem.createItem(name, ds)
 
     def testUnprotectedUpdates(self):
         item = self._datasetItem("v1234.fits", "raw")

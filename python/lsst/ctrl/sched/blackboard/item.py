@@ -2,7 +2,8 @@
 The abstract BlackboardItem class and implementations
 """
 
-from base import _AbstractBase
+from lsst.ctrl.sched.base import _AbstractBase
+from lsst.ctrl.sched.dataset import Dataset
 
 from lsst.pex.policy import Policy, PAFWriter
 import pdb
@@ -299,11 +300,10 @@ class DataProductItem(BasicBlackboardItem):
     """
 
     SUCCESS  = "SUCCESS"
-    TYPE     = "TYPE"
-    IDXTYPES = "IDXTYPES"
+    DATASET  = "DATASET"
     
-    def __init__(self, impl, name=None, type=None, indexTypes=None,
-                 success=None):
+    def __init__(self, impl, name=None, success=None, dataset=None):
+                 
         """
         create an item.  This is not usually called directly by the user but
         rather via createItem().  If the standard property parameters
@@ -320,22 +320,36 @@ class DataProductItem(BasicBlackboardItem):
                            (Default: True)
         """
         BasicBlackboardItem.__init__(self, impl, name)
-        if type is None and not impl.hasProperty(self.TYPE):
-            type = ""
-        if type is not None:
-            impl._setProperty(self.TYPE, type)
-        if indexTypes:
-            impl._setProperty(self.IDXTYPES, indexTypes)
         if success is None and not impl.hasProperty(self.SUCCESS):
             success = True
         if success is not None:
             impl._setProperty(self.SUCCESS, success)
 
+        if dataset:
+            if isinstance(dataset, Dataset):
+                dataset = dataset.toPolicy()
+            if not isinstance(dataset, Policy):
+                raise ValueError("DataProductItem: input dataset not Dataset or Policy")
+            impl._setProperty(self.DATASET, dataset)
+
+    def getDataset(self):
+        """
+        return a Dataset instance describing this product or None if a
+        description is not available.
+        """
+        ds = self.getProperty(self.DATASET)
+        if ds:
+            ds = Dataset.fromPolicy(ds)
+        return ds
+
     def getType(self):
         """
-        return the dataset type.  Equivalent to self.getProperty("TYPE")
+        return the dataset type or None if it isn't known
         """
-        return self.getProperty(self.TYPE)
+        ds = self.getDataset()
+        if ds:
+            return ds.type
+        return None
         
     def isSuccessful(self):
         """
@@ -344,14 +358,10 @@ class DataProductItem(BasicBlackboardItem):
         return self.getProperty(self.SUCCESS)
         
     @staticmethod
-    def createItem(name, type="", indexTypes=None, success=True, props=None):
+    def createItem(dataset, success=True, props=None):
         """
-        create a BlackboardItem with the given properties
-        @param name        the item name
-        @param type        the value for the TYPE property, indicating the type
-                             of dataset being described.
-        @param indexTypes  an array of names giving the names of the indexs
-                             that identify the dataset.
+        create a BlackboardItem for a given dataset
+        @param dataset     a Dataset instance describing the data product
         @param success     True if the dataset was indeed successfully create.
         @param props       a dictionary of additional properties
         """
@@ -359,7 +369,9 @@ class DataProductItem(BasicBlackboardItem):
         if props:
             for key in props.keys():
                 impl._setProperty(key, props[key])
-        out = DataProductItem(impl, name, type, indexTypes, success)
+
+        name = dataset.toString()
+        out = DataProductItem(impl, name, success, dataset)
         return out
 
 
@@ -369,18 +381,18 @@ class JobItem(BasicBlackboardItem):
 
     It supports the following common properties:
     @verbatim
-    NAME    a name for the item.  There is no expectation that it is 
-              unique across items, but typically it is.
-    FILES   a list of the files that serve as input to a pipeline
+    NAME       a name for the item.  There is no expectation that it is 
+                 unique across items, but typically it is.
+    DATASETS   a list of the datasets that serve as input a pipeline job
     @endverbatim
 
     These are normally created via createItem() which chooses the internal
     representation of the data.
     """
 
-    FILES = "FILES"
+    DATASETS = "DATASETS"
 
-    def __init__(self, impl, name=None, files=None):
+    def __init__(self, impl, name=None, datasets=None, triggerHandler=None):
         """
         create an item.  This is not usually called directly by the user but
         rather via createItem().  If the standard property parameters
@@ -389,16 +401,27 @@ class JobItem(BasicBlackboardItem):
         is set.
         @param impl     the item that is actually storing the properties
         @param name     the value for the NAME property.
-        @param files    the list of input files required by this job.
+        @param datasets the list of input datasets required by this job.
+        @param triggerHandler  a TriggerHandler instance
         """
         BasicBlackboardItem.__init__(self, impl, name)
-        if files:
-            impl._setProperty(self.FILES, files)
+        if datasets:
+            dsps = []
+            if not isinstance(datasets, list):
+                datasets = [datasets]
+            for ds in datasets:
+                dsps.append(ds.toPolicy())
+            impl._setProperty(self.DATASETS, dsps)
 
-        self.triggerHandler = None
+        self.triggerHandler = triggerHandler
 
-    def getFiles(self):
-        return self.getProperty(self.FILES)
+    def getDatasets(self):
+        dss = self.getProperty(self.DATASETS)
+        out = []
+        if dss:
+            for ds in dss:
+                out.append(Dataset.fromPolicy(ds))
+        return out
 
     def setTriggerHandler(self, handler):
         """
@@ -426,17 +449,18 @@ class JobItem(BasicBlackboardItem):
         
 
     @staticmethod
-    def createItem(name, files=None, props=None):
+    def createItem(name, datasets=None, triggerHandler=None, props=None):
         """
         create a BlackboardItem with the given properties
-        @param name    the item name
-        @param props   a dictionary of properties
+        @param name            the item name
+        @param triggerHandler  a TriggerHandler instance
+        @param props           a dictionary of properties
         """
         impl = PolicyBlackboardItem()
         if props:
             for key in props.keys():
                 impl._setProperty(key, props[key])
-        out = JobItem(impl, name, files)
+        out = JobItem(impl, name, datasets, triggerHandler)
         return out
 
 class Props(object):
@@ -445,9 +469,8 @@ class Props(object):
     """
     NAME     = BasicBlackboardItem.NAME
     SUCCESS  =     DataProductItem.SUCCESS
-    TYPE     =     DataProductItem.TYPE
-    IDXTYPES =     DataProductItem.IDXTYPES
-    FILES    =             JobItem.FILES
+    DATASET  =     DataProductItem.DATASET
+    DATASETS =             JobItem.DATASETS
 
 
 __all__ = "BlackboardItem DictBlackboardItem PolicyBlackboardItem ImplBlackboardItem BasicBlackboardItem DataProductItem JobItem Props".split()

@@ -1,0 +1,85 @@
+#<?cfg paf dictionary ?>
+#
+target: schedule
+
+description:  "Configuration data for scheduling jobs based on
+               available datasets"
+
+definitions: {
+
+   className: {
+      type:         "string"
+      description:  "the fully-qualified python class name for the
+                     Scheduler class used to consume and use this data.
+                     The value sets the dictionary that applies: specifically,
+                     when this parameter has one of the allowed values (all
+                     of which are synonyms for each other), this dictionary 
+                     is applicable"
+      default:      "DataTriggered"
+      minOccurs:    0
+      maxOccurs:    1        # parameter may occur only once in policy file
+      allowed: {
+         value:       "DataTriggered"
+      }
+      allowed: {
+         value:       "DataTriggeredScheduler"
+      }
+      allowed: {
+         value:       "lsst.ctrl.sched.joboffice.scheduler.DataTriggeredScheduler"
+      }
+   }
+
+   trigger: {
+      type:  policy
+      description:  "a parameterized description of a set of datasets that 
+                     must be available before a job can be scheduled."
+      minOccurs:    1
+   }
+
+   jobDataset: {
+      type:  policy
+      description:  "a parameterized description of a set of datasets that 
+                     must be provided as input to a job."
+      minOccurs:    0
+   }
+
+   jobName: {
+      type:  policy
+      description:  "parameters for creating a job name"
+      minOccurs:    1
+      dictionary: {
+         definitions: {
+             default: {
+                 type:  "string"
+                 description:  "a default base name for forming a jobname.
+                                If a template is not provided or applicable,
+                                the name will be of the form 'default-#',
+                                where # is an incremented number."
+                 minOccurs: 0
+                 minOccurs: 1
+                 default:  "Job"
+             }
+             initCounter: {
+                 type:  int
+                 description:  "the initial number to use when forming the 
+                                first name using the default base"
+                 minOccurs: 0
+                 minOccurs: 1
+                 default:   1
+             }
+             template: {
+                 type:  string
+                 description:  "a python template string for forming the name.
+                                The substitution markers (%...) should use the
+                                form, %(name)f, where name is either 'type' or
+                                a dataset identifier name.  If not provided,
+                                the default base will be used."
+                 minOccurs: 0
+                 maxOccurs: 1
+             }
+         }
+      }
+   }
+
+
+}

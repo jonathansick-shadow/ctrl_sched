@@ -5,8 +5,8 @@ from __future__ import with_statement
 
 from lsst.pex.policy import Policy
 from lsst.pex.logging import Log
-from dataset import Dataset
-from lsst.ctrl.sched.blackboard.base import _AbstractBase
+from lsst.ctrl.sched.dataset import Dataset
+from lsst.ctrl.sched.base import _AbstractBase
 
 import os
 

@@ -6,8 +6,8 @@ from __future__ import with_statement
 from lsst.pex.policy import Policy
 from lsst.pex.logging import Log
 from id import IDFilter
-from dataset import Dataset
-from lsst.ctrl.sched.blackboard.base import _AbstractBase
+from lsst.ctrl.sched.dataset import Dataset
+from lsst.ctrl.sched.base import _AbstractBase
 
 import os, copy
 
@@ -174,8 +174,8 @@ class SimpleTrigger(Trigger):
             # the template is used to set values of identifiers not of 
             # interest to this filter and identifiers that can't be 
             # reduced to a closed set.  
-            if not self.recognize(template):
-                return []
+            # if not self.recognize(template):
+            #     return []
             types = [ template.type ]
         else:
             if not self.dataTypes:
@@ -193,9 +193,8 @@ class SimpleTrigger(Trigger):
                 elif not template.ids.has_key(id):
                     # template datsets unable to close the set
                     raise RuntimeError("can't close identifier set for " + id)
-                else:
-                    del idvals[id]
-                    break
+            if len(idvals[id]) == 0:
+                del idvals[id]
 
         # these are the idnames, then, we are varying; and the number of 
         # values for each.  The total number of datasets returned will then

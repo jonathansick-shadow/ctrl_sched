@@ -4,7 +4,7 @@ classes for filtering identifiers based on constraints
 from __future__ import with_statement
 
 from lsst.pex.policy import Policy
-from lsst.ctrl.sched.blackboard.base import _AbstractBase
+from lsst.ctrl.sched.base import _AbstractBase
 
 class IDFilter(_AbstractBase):
     """

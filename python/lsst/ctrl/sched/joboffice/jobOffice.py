@@ -4,7 +4,7 @@ jobOffice implementations
 from __future__ import with_statement
 
 from lsst.ctrl.sched.blackboard import Blackboard, Props,
-from lsst.ctrl.sched.blackboard.base import _AbstractBase
+from lsst.ctrl.sched.base import _AbstractBase
 from lsst.ctrl.events import EventSystem
 from lsst.pex.policy import Policy, DefaultPolicyFile
 from lsst.pex.logging import Log
@@ -13,7 +13,8 @@ import os, time
 
 class JobOffice(_AbstractBase):
     """
-    an abstract parent class
+    an abstract class that is responsible for using a blackboard to track
+    the progress of running pipelines and sending them jobs as needed.
     """
 
     def __init__(self, persistDir, fromSubclass=False):
@@ -158,20 +159,7 @@ class _BaseJobOffice(JobOffice):
         @param event    the data event.  
         @return bool    true if the event was processed.
         """
-        dsps = event.getProperties.getArray("dataset")
-        for dsp in dsps:
-            ds = Dataset.fromPolicy(dsp)
-            # if recognized...
-            
         self._notImplemented("processDataEvent")
-
-    def processDataset(self, dataset):
-        """
-        process an event indicating that one or more datasets are available.
-        @param event    the data event.  
-        @return bool    true if the event was processed.
-        """
-        self._notImplemented("processDataset")
 
     def processDataEvents(self):
         """
@@ -260,5 +248,34 @@ class DataTriggeredJobOffice(_BaseJobOffice):
     """
     
     def __init__(self, rootdir, log=None, policy=None):
-        pass
+        dpolf = DefaultPolicyFile("ctrl_sched",
+                                  "DataTriggeredJobOffice_dict.paf",
+                                  "policies")
+        _BaseJobOffice.__init__(self, rootdir, log, policy, dpolf, True)
+
+        # create a scheduler based on "schedule.className"
+        self.scheduler = \
+            DataTriggeredScheduler(self.bb, self.policy.getPolicy("schedule"),
+                                   self.log)
+                                   
     
+    def processDataEvent(self, event):
+        """
+        process an event indicating that one or more datasets are available.
+        @param event    the data event.  
+        @return bool    true if the event was processed.
+        """
+        dsps = event.getProperties.getArray("dataset")
+        for dsp in dsps:
+            self.scheduler.processDataset(Dataset.fromPolicy(dsp))
+
+        self.scheduler.makeJobsAvailable()
+
+    def processDataset(self, dataset):
+        """
+        process an event indicating that one or more datasets are available.
+        @param event    the data event.  
+        @return bool    true if the event was processed.
+        """
+        self._notImplemented("processDataset")
+

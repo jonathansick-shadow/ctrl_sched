@@ -5,7 +5,7 @@ BlackboardItem and BlackboardItemQueue.
 from __future__ import with_statement
 import os, re
 
-from base import _AbstractBase
+from lsst.ctrl.sched.base import _AbstractBase
 from exceptions import *
 from item import *
 
@@ -707,7 +707,10 @@ class InMemoryBlackboardQueue(BlackboardItemQueue):
         @param index   the zero-based position index for the n-th item.  The
                          default is to get the next (first) item in the queue.
         """
-        return self._items[index]
+        try:
+            return self._items[index]
+        except IndexError:
+            raise IndexError("queue index out of range: %i" % index)
 
     def pop(self, index=0):
         """

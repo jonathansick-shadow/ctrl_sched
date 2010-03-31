@@ -4,7 +4,7 @@ classes for describing datasets.
 from __future__ import with_statement
 
 from lsst.pex.policy import Policy
-from lsst.ctrl.sched.blackboard.base import _AbstractBase
+from base import _AbstractBase
 
 import os
 
@@ -55,6 +55,30 @@ class Dataset(object):
 
     def __str__(self):
         return self.toString()
+
+    def toPolicy(self, policy=None):
+        """
+        return a policy that describes this dataset.
+        @param policy    a policy instance to write into.  If not provided
+                           (default) a new one is created.
+        @return Policy   the policy containing the description of this dataset.
+        """
+        if not policy:
+            policy = Policy()
+        if self.type:  policy.set("type", self.type)
+
+        if self.ids:
+            ids = Policy()
+            policy.set("ids", ids)
+            for id in self.ids.keys():
+                ids.set(id, self.ids[id])
+
+        if self.path:  policy.set("path", self.path)
+
+        return policy
+
+    def _policy_(self):
+        return self.toPolicy()
 
     @staticmethod
     def fromPolicy(policy):

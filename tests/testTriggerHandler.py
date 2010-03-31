@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Tests of the Trigger classes
+Tests of the TriggerHandler classes
 """
 from __future__ import with_statement
 

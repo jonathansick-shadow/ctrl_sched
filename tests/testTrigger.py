@@ -11,7 +11,7 @@ import unittest
 import time
 
 from lsst.ctrl.sched.joboffice.triggers import Trigger, SimpleTrigger
-from lsst.ctrl.sched.joboffice.dataset import Dataset
+from lsst.ctrl.sched import Dataset
 from lsst.ctrl.sched.joboffice.id import IDFilter, IntegerIDFilter
 from lsst.pex.policy import Policy
 

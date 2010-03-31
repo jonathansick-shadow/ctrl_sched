@@ -11,6 +11,7 @@ import unittest
 import time
 
 import lsst.ctrl.sched.blackboard as bb
+from lsst.ctrl.sched import Dataset
 from lsst.pex.policy import Policy, PAFWriter
 
 testdir = os.path.join(os.environ["CTRL_SCHED_DIR"], "tests")
@@ -181,10 +182,11 @@ class ImplBBItemTestCase2(ImplBBItemTestCase1):
 class BasicBBItemTestCase1(ImplBBItemTestCase1):
 
     def setUp(self):
+        self.name = "Goob"
         self.bbi = bb.BasicBlackboardItem(
             bb.DictBlackboardItem({"foo": "bar", "count": 3,
                                           "files": [ "goob", "gurn"] }),
-            "Goob")
+            self.name)
 
         self.initCount = 4
         
@@ -194,7 +196,7 @@ class BasicBBItemTestCase1(ImplBBItemTestCase1):
     # inherits all tests from DictBBItemTestCase
     
     def testNameSet(self):
-        self.assertEquals(self.bbi.getProperty("NAME"), "Goob")
+        self.assertEquals(self.bbi.getProperty("NAME"), self.name)
 
     def testGetPropertyNames(self):
         names = self.bbi.getPropertyNames()
@@ -217,7 +219,8 @@ class BasicBBItemTestCase1(ImplBBItemTestCase1):
 class BasicBBItemTestCase2(BasicBBItemTestCase1):
 
     def setUp(self):
-        self.bbi = bb.BasicBlackboardItem.createItem("Goob", 
+        self.name = "Goob"
+        self.bbi = bb.BasicBlackboardItem.createItem(self.name,
                                                  {"foo": "bar", "count": 3,
                                                   "files": [ "goob", "gurn"] })
         
@@ -231,11 +234,17 @@ class BasicBBItemTestCase2(BasicBBItemTestCase1):
 class DataProdBBItemTestCase(BasicBBItemTestCase1):
 
     def setUp(self):
-        self.bbi = bb.DataProductItem.createItem("Goob", "calib",
-                                                 "visitid ccdid".split(),
+        type = "CalExp"
+        path = "goob/CalExp-v88-c12.fits"
+        ccdid = 12
+        visitid = 88
+        ds = Dataset(type, path, ccdid=ccdid, visitid=visitid)
+        self.name = ds.toString()
+
+        self.bbi = bb.DataProductItem.createItem(dataset=ds,
                                            props={"foo": "bar", "count": 3,
                                                   "files": [ "goob", "gurn"] })
-        self.initCount = 7
+        self.initCount = 11
         
     def tearDown(self):
         pass
@@ -243,9 +252,23 @@ class DataProdBBItemTestCase(BasicBBItemTestCase1):
     # inherits all tests from DictBBItemTestCase
 
     def testStdNames(self):
-        self.assertEquals(self.bbi[bb.Props.TYPE], "calib")
-        self.assertEquals(self.bbi[bb.Props.IDXTYPES], ["visitid", "ccdid"])
         self.assert_(self.bbi[bb.Props.SUCCESS])
+        self.assert_(self.bbi.hasProperty(bb.Props.DATASET))
+        ds = self.bbi.getProperty(bb.Props.DATASET)
+        self.assert_(isinstance(ds, Policy))
+        self.assertEquals(ds.get("type"), "CalExp")
+        ids = ds.get("ids")
+        self.assert_(ids.exists("visitid"))
+        self.assert_(ids.exists("ccdid"))
+
+    def testAccessors(self):
+        ds = self.bbi.getDataset()
+        self.assert_(isinstance(ds, Dataset))
+        self.assertEquals(ds.type, "CalExp")
+        self.assert_(ds.ids.has_key("visitid"))
+        self.assert_(ds.ids.has_key("ccdid"))
+        self.assertEquals(ds.ids["visitid"], 88)
+        self.assertEquals(ds.ids["ccdid"], 12)
 
 __all__ = "AbsBBItemTestCase DictBBItemTestCase PolicyBBItemTestCase ImplBBItemTestCase1".split()
 
