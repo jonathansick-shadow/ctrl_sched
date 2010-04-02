@@ -3,7 +3,7 @@ jobOffice implementations
 """
 from __future__ import with_statement
 
-from lsst.ctrl.sched.blackboard import Blackboard, Props,
+from lsst.ctrl.sched.blackboard import Blackboard, Props
 from lsst.ctrl.sched.base import _AbstractBase
 from lsst.ctrl.events import EventSystem
 from lsst.pex.policy import Policy, DefaultPolicyFile
@@ -82,7 +82,7 @@ class _BaseJobOffice(JobOffice):
         # instantiate parent class
         self.name = self.policy.get("name")
         persistDir = self.policy.get("persist.dir") % {"schedroot": rootdir, 
-                                                       "name": % self.name  }
+                                                       "name": self.name    }
         JobOffice.__init__(self, persistDir)
 
         # logger
@@ -147,19 +147,11 @@ class _BaseJobOffice(JobOffice):
             return False
         
         with self.bb:
-            job = self.bb.queues.jobsInProgress.findOriginator(jevent.getOriginator())
+            job = self.findOriginator(jevent.getOriginator())
             if not job:
                 return False
             self.bb.markJobDone(job, jevent.getProperties().getString("success"))
         return True
-
-    def processDataEvent(self, event):
-        """
-        process an event indicating that one or more datasets are available.
-        @param event    the data event.  
-        @return bool    true if the event was processed.
-        """
-        self._notImplemented("processDataEvent")
 
     def processDataEvents(self):
         """
@@ -178,16 +170,20 @@ class _BaseJobOffice(JobOffice):
 
         return out
 
-    def findAvailableJobs(self):
-        with self.bb:
-            ready = []
-            for i in xrange(self.bb.queues.jobsInProgress.length()):
-                job = self.bb.queues.jobsInProgress.get(i)
-                if job.isReady():
-                    ready.append(job)
+    def processDataEvent(self, event):
+        """
+        process an event indicating that one or more datasets are available.
+        @param event    the data event.  
+        @return bool    true if the event was processed.
+        """
+        self._notImplemented("processDataEvent")
 
-            for job in ready:
-                self.bb.makeJobAvailable(job)
+    def findAvailableJobs(self):
+        """
+        move all jobs in the jobsPossible that are ready to go to the
+        jobsAvailable queue.
+        """
+        self._notImplemented("findAvailableJobs")
 
     def allocateJobs(self):
         """
@@ -207,7 +203,7 @@ class _BaseJobOffice(JobOffice):
                     # send a command to that pipeline
                     cmd = self.makeJobCommandEvent(job, pipe.getOriginator())
                     self.esys.publish(cmd, self.jobTopic)
-                    self.bb.allocateNextJob()
+                    self.bb.allocateNextJob(pipe.getOriginator())
                     out += 1
 
         return out
@@ -269,13 +265,10 @@ class DataTriggeredJobOffice(_BaseJobOffice):
         for dsp in dsps:
             self.scheduler.processDataset(Dataset.fromPolicy(dsp))
 
+        # wait until all events are processed
+        #   self.scheduler.makeJobsAvailable()
+
+    def findAvailableJobs(self):
         self.scheduler.makeJobsAvailable()
 
-    def processDataset(self, dataset):
-        """
-        process an event indicating that one or more datasets are available.
-        @param event    the data event.  
-        @return bool    true if the event was processed.
-        """
-        self._notImplemented("processDataset")
-
+    

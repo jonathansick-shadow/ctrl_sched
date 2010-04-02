@@ -8,8 +8,7 @@ import lsst.SConsUtils as scons
 env = scons.makeEnv("ctrl_sched",
                     r"$HeadURL$",
                     [["pex_logging"],
-                     ["pex_policy"],
-                     ["cat"]
+                     ["pex_policy"]
                     ])
 
 pkg = env["eups_product"]

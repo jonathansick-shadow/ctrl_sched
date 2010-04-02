@@ -185,13 +185,13 @@ class DataTriggeredScheduler(Scheduler):
         datasets have been seen via processDataset().
         """
         with self.bb:
-            jobs = []
+            ready = []
             for i in xrange(self.bb.queues.jobsPossible.length()):
                 job = self.bb.queues.jobsPossible.get(i)
                 if job.isReady():
-                    jobs.append(job)
+                    ready.append(job)
 
-            for job in jobs:
+            for job in ready:
                 self.bb.makeJobAvailable(job)
 
 
