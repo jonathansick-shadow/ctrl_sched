@@ -2,8 +2,8 @@
 #
 target: schedule
 
-description:  "Configuration data for scheduling jobs based on
-               available datasets"
+# description:  "Configuration data for scheduling jobs based on
+#                available datasets"
 
 definitions: {
 

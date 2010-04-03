@@ -1,7 +1,8 @@
 #<?cfg paf policy ?>
 #
+name:  ccdassembly
 persist: {
-    dir:   %(schedroot)/ccdassembly
+    dir:   %(schedroot)s/ccdassembly
     impl:  lsst.ctrl.sched.blackboard.PolicyDataQueue
 }
 

@@ -3,12 +3,15 @@ jobOffice implementations
 """
 from __future__ import with_statement
 
+import lsst.pex.exceptions
 from lsst.ctrl.sched.blackboard import Blackboard, Props
 from lsst.ctrl.sched.base import _AbstractBase
+from lsst.ctrl.sched import Dataset
 from lsst.ctrl.events import EventSystem
 from lsst.pex.policy import Policy, DefaultPolicyFile, PolicyString
 from lsst.daf.base import PropertySet
 from lsst.pex.logging import Log
+from scheduler import DataTriggeredScheduler
 
 import os, time
 
@@ -34,14 +37,27 @@ class JobOffice(_AbstractBase):
         
         self.bb = Blackboard(persistDir)
         self.esys = EventSystem.getDefaultEventSystem()
+        self.halt = False
+        self.running = False
     
-    def run(self):
+    def run(self, maxIterations=None):
         """
         continuously listen for events from pipelines and schedule jobs
-        accordingly.  This will only exit when this job office has received
-        stop signal or the JobOffice determines that work has been completed.
+        accordingly.  Unless maxIterations is set, this function will only
+        exit when this job office has received stop signal or the JobOffice
+        determines that work has been completed.
+        @param maxIterations   loop through our JobOffice chores no more
+                                  than this number of times.  If None
+                                  (default), this function will not exit
+                                  until the stop flag is set.
         """
         self._notImplemented("run")
+
+    def stop(self):
+        """
+        set the stop flag to tell the JobOffice to stop running.
+        """
+        self.halt = True
 
 class _BaseJobOffice(JobOffice):
     """
@@ -78,7 +94,7 @@ class _BaseJobOffice(JobOffice):
                                               "baseJobOffice_dict.paf",
                                               "policies")
         defaults = Policy.createPolicy(defPolicyFile,
-                                       policyFile.getRepositoryPath(),
+                                       defPolicyFile.getRepositoryPath(),
                                        True)
         if not policy:
             policy = Policy()
@@ -92,7 +108,7 @@ class _BaseJobOffice(JobOffice):
         self.name = self.policy.get("name")
         persistDir = self.policy.get("persist.dir") % {"schedroot": rootdir, 
                                                        "name": self.name    }
-        JobOffice.__init__(self, persistDir)
+        JobOffice.__init__(self, persistDir, True)
 
         # logger
         if not log:
@@ -102,16 +118,27 @@ class _BaseJobOffice(JobOffice):
         # initialize some data from policy
         self.initialWait = self.policy.get("listen.initialWait")
         self.emptyWait = self.policy.get("listen.emptyWait")
-        self.dataTopics = self.policy.getArray("listen.dataReadyEvents")
+        self.dataTopics = self.policy.getArray("listen.dataReadyEvent")
         self.jobTopic = self.policy.get("listen.pipelineEvent")
     
-    def run(self):
+    def run(self, maxIterations=None):
         """
         continuously listen for events from pipelines and schedule jobs
-        accordingly.  This will only exit when this job office has received
-        stop signal or the JobOffice determines that work has been completed.
+        accordingly.  Unless maxIterations is set, this function will only
+        exit when this job office has received stop signal or the JobOffice
+        determines that work has been completed.
+        @param maxIterations   loop through our JobOffice chores no more
+                                  than this number of times.  If None
+                                  (default), this function will not exit
+                                  until the stop flag is set.
         """
-        while True:
+        i = 0
+        max = maxIterations or 1
+        while i < max:
+            if self.halt:
+                self.halt = False
+                return
+            
             # listen for completed Jobs
             self.processDoneJobs()
 
@@ -123,6 +150,9 @@ class _BaseJobOffice(JobOffice):
 
             # listen for pipelines ready to run and give them jobs
             self.allocateJobs()
+
+            if maxIterations is not None:
+                i += 1
 
     def processDoneJobs(self):
         """
@@ -296,8 +326,8 @@ class DataTriggeredJobOffice(_BaseJobOffice):
         """
         try:
             pol = unserializePolicy(policystr)
-            return Dataset(pol)
-        except LsstCppException, ex:
+            return Dataset.fromPolicy(pol)
+        except lsst.pex.exceptions.LsstCppException, ex:
             raise RuntimeError("Dataset encoding error: " + policystr)
             
     def toPipelineQueueItem(self, pevent):
@@ -306,7 +336,7 @@ class DataTriggeredJobOffice(_BaseJobOffice):
         """
         props = { "originator": pevent.getOriginator(),
                   "ipid": pevent.getIPId(),
-                  "runid", pevent.getRunId()            }
+                  "runid": pevent.getRunId()            }
         pipe = BasicBlackboardItem.createItem(pevent.getName(), props)
         return pipe
 

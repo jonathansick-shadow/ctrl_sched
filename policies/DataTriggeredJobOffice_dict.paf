@@ -1,0 +1,197 @@
+#<?cfg paf dictionary ?>
+#
+target: schedule
+
+description:  "Configuration data for scheduling jobs based on
+               available datasets"
+
+definitions: {
+
+   className: {
+      type:         "string"
+      description:  "the fully-qualified python class name for the
+                     Scheduler class used to consume and use this data.
+                     The value sets the dictionary that applies: specifically,
+                     when this parameter has one of the allowed values (all
+                     of which are synonyms for each other), this dictionary 
+                     is applicable"
+      default:      "DataTriggered"
+      minOccurs:    0
+      maxOccurs:    1        # parameter may occur only once in policy file
+      allowed: {
+         value:       "DataTriggered"
+      }
+      allowed: {
+         value:       "DataTriggeredJobOffice"
+      }
+      allowed: {
+         value:       "lsst.ctrl.sched.DataTriggeredJobOffice"
+      }
+   }
+
+   name: {
+      type:  string
+      description:   "a logical name for this JobOffice.  Typically this 
+                      is named after the pipeline that it manages."
+      minOccurs: 0
+      maxOccurs: 1
+      default:   JobOffice
+   }
+
+   persist: {
+      type:  policy
+      description:   "parameters that control how the JobOffice's data
+                      is persisted"
+      minOccurs:  0
+      maxOccurs:  1
+#      default: {
+#         dir:  "%(schedroot)"
+#      }
+      dictionary: {
+         definitions: {
+            dir: {
+               type:  string
+               description:  "the root directory where the JobOffice data will 
+                              be stored.  This can be a python-style string
+                              template that supports to parameters that will
+                              inserted; the supported paramters are:
+                                schedroot:   the root directory that the 
+                                               JobOffice was constructed with
+                                name         the JobOffice name provided at 
+                                               construction."
+               minOccurs:  1
+               minOccurs:  0
+               default:  "%(schedroot)"
+            }
+            impl: {
+               # NOTE: this item is not currently used
+               type:  string
+               description:  "the fully-qualified python class to use as the 
+                              default queue implimentation"
+               default:  lsst.ctrl.sched.blackboard.PolicyDataQueue
+            }
+         }
+      }
+   }
+
+   listen:  {
+      type:  policy
+      description:  "the parameters that control how the JobOffice listens 
+                     for pipeline progress"
+      minOccurs: 1
+      maxOccurs: 1
+#      default: {
+#      }
+      dictionary: {
+         definitions: {
+            brokerHostName: {
+               type:  string
+               description:  "the DNS host name of the machine where an 
+                              an event broker is running and which should be
+                              used to receive and send events."
+               minOccurs:  0  # default value can be given on the command line
+               maxOccurs:  1
+            }
+            brokerHostPort: {
+               type:  int
+               description:  "the port number on the host where the
+                              an event broker is running and which should be
+                              used to receive and send events."
+               minOccurs:  0  # default value can be given on the command line
+               maxOccurs:  1
+            }
+
+            dataReadyEvent: {
+               type:  string
+               description:  "the event topic name that the JobOffice will
+                              listen to for alerts about data being ready.
+                              Note that this needs to match the value given 
+                              for pipeline stage policy that produces the
+                              dataset of interest."
+               minOccurs:  1
+               maxOccurs: -1  #  multiple values can be given
+            }
+            pipelineEvent: {
+               type:  string
+               description:  "the event topic name that the JobOffice will
+                              listen to for alerts about the status of a 
+                              pipeline.  It is expected that the 'status'
+                              property attached to this event will be set
+                              to 'ready' when the pipeline is ready to 
+                              be assigned a job and 'done' when that job 
+                              is finished."
+               minOccurs:  0
+               maxOccurs:  1
+               default: ""
+            }
+            stopEvent: {
+               type:  string
+               description:  "the event topic name that the JobOffice will
+                              receive the command to shut itself down."
+               minOccurs:  0
+               maxOccurs:  1
+               default: "JobOfficeStop"
+            }
+
+            initialWait: {
+               type:  int
+               description:  "the number of milliseconds to wait for the 
+                              first event of a particular topic to appear"
+               minOccurs: 0
+               maxOccurs: 1
+               default:  100
+            }
+            emptyWait: {
+               type:  int
+               description:  "the number of milliseconds to wait for the 
+                              an event when trying to empty the event 
+                              queue"
+               minOccurs: 0
+               maxOccurs: 1
+               default:   1
+            }
+         }
+      }
+   }
+
+   schedule: {
+      type: policy
+      description:  "the parameters that configure how this JobOffice schedules
+                     and allocates jobs for pipelines."
+      minOccurs: 1
+      minOccurs: 1
+
+      ######
+      #  the dictionary for this parameter can depend on the value for the 
+      #  "className" parameter.  The common part of the dictionary is as 
+      #  follows; the proper full dictionary for a given className is loaded 
+      #  when the class is instantiated.
+      # 
+      # dictionary: {
+      #    definitions: {
+      #       className: {
+      #          type:         "string"
+      #          description:  "the fully-qualified python class name for the
+      #                         Scheduler class used to consume and use this data.
+      #                         The value sets the dictionary that applies: specifically,
+      #                         when this parameter has one of the allowed values (all
+      #                         of which are synonyms for each other), this dictionary 
+      #                         is applicable"
+      #          default:      "DataTriggered"
+      #          minOccurs:    0
+      #          maxOccurs:    1        # parameter may occur only once in policy file
+      #                
+      #       }
+      #    }
+      # }
+   }
+
+   init: {
+      # this is currently not used.
+      type:  policy
+      description:  "parameters that configure how the JobOffice is configured
+                     when no persisted JobOffice data is available."
+      minOccurs: 0
+      maxOccurs: 1
+   }
+}
