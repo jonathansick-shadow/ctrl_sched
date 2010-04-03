@@ -6,10 +6,19 @@ from __future__ import with_statement
 from lsst.ctrl.sched.blackboard import Blackboard, Props
 from lsst.ctrl.sched.base import _AbstractBase
 from lsst.ctrl.events import EventSystem
-from lsst.pex.policy import Policy, DefaultPolicyFile
+from lsst.pex.policy import Policy, DefaultPolicyFile, PolicyString
+from lsst.daf.base import PropertySet
 from lsst.pex.logging import Log
 
 import os, time
+
+def serializePolicy(policy):
+    writer = PAFWriter()
+    writer.write(policy)
+    return writer.toString()
+
+def unserializePolicy(policystr):
+    return Policy.createPolicy(PolicyString(policystr))
 
 class JobOffice(_AbstractBase):
     """
@@ -201,12 +210,24 @@ class _BaseJobOffice(JobOffice):
                     job = self.bb.queus.jobsAvailable.get(0)
 
                     # send a command to that pipeline
-                    cmd = self.makeJobCommandEvent(job, pipe.getOriginator())
+                    cmd = self.makeJobCommandEvent(job, pipe.getOriginator(),
+                                                   pipe.getRunId())
                     self.esys.publish(cmd, self.jobTopic)
                     self.bb.allocateNextJob(pipe.getOriginator())
                     out += 1
 
         return out
+
+    def makeJobCommandEvent(self, job, pipeline, runid=""):
+        """
+        create a CommandEvent to send to a pipeline instructing it to
+        commence working on the given job.
+        """
+        props = PropertySet()
+        for ds in job.getDatasets():
+            props.add("dataset", serialize(ds.toPolicy()))
+        return CommandEvent(runid, pipeline, props)
+        
 
     def receiveReadyPipelines(self):
         """
@@ -263,10 +284,34 @@ class DataTriggeredJobOffice(_BaseJobOffice):
         """
         dsps = event.getProperties.getArray("dataset")
         for dsp in dsps:
-            self.scheduler.processDataset(Dataset.fromPolicy(dsp))
+            self.scheduler.processDataset(self.datasetFromProperty(dsp))
 
         # wait until all events are processed
         #   self.scheduler.makeJobsAvailable()
+
+    def datasetFromProperty(self, policystr):
+        """
+        convert the given string-encoded policy data into a Dataset
+        @param policystr   the policy data written into a string in PAF format.
+        """
+        try:
+            pol = unserializePolicy(policystr)
+            return Dataset(pol)
+        except LsstCppException, ex:
+            raise RuntimeError("Dataset encoding error: " + policystr)
+            
+    def toPipelineQueueItem(self, pevent):
+        """
+        convert a pipeline-ready event into a pipeline item.
+        """
+        props = { "originator": pevent.getOriginator(),
+                  "ipid": pevent.getIPId(),
+                  "runid", pevent.getRunId()            }
+        pipe = BasicBlackboardItem.createItem(pevent.getName(), props)
+        return pipe
+
+    
+        
 
     def findAvailableJobs(self):
         self.scheduler.makeJobsAvailable()

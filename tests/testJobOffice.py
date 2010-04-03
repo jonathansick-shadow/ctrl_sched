@@ -10,7 +10,7 @@ import sys
 import unittest
 import time
 
-from lsst.ctrl.sched.joboffice.jobOffice import JobOffice, _BaseJobOffice
+from lsst.ctrl.sched.joboffice.jobOffice import JobOffice, _BaseJobOffice, DataTriggeredJobOffice
 from lsst.ctrl.sched import Dataset
 from lsst.pex.policy import Policy
 
@@ -33,6 +33,9 @@ class AbstractJobOfficeTestCase(unittest.TestCase):
         jo = JobOffice(bbdir, fromSubclass=True)
         self.assertRaises(RuntimeError, jo.run)
 
+
+class DataTriggeredJobOfficeTestCase(unittest.TestCase):
+    pass
 
 
 __all__ = "AbstractJobOfficeTestCase".split()
