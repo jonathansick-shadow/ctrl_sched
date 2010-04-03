@@ -44,9 +44,10 @@ class DatasetTestCase(unittest.TestCase):
         self.assertEquals(ds.ids["visitid"], visitid)
 
         # pdb.set_trace()
-        ds = Dataset(type, path, {"ccdid": ccdid, "visitid": visitid })
+        ds = Dataset(type, path, False, {"ccdid": ccdid, "visitid": visitid })
         self.assertEquals(ds.type, type)
         self.assertEquals(ds.path, path)
+        self.assert_(not ds.valid)
         self.assert_(ds.ids is not None)
         self.assertEquals(ds.ids["ccdid"], ccdid)
         self.assertEquals(ds.ids["visitid"], visitid)

@@ -17,12 +17,15 @@ class Dataset(object):
     variables 'type' (a string) and ids (a dictionary), respectively.
     """
 
-    def __init__(self, type, path=None, ids=None, **kw):
+    def __init__(self, type, path=None, valid=True, ids=None, **kw):
         """
         create the dataset
         @param type    the dataset type name
         @param path    a filesystem pathname to the file.  If None, the 
                          path is not known/applicable
+        @param valid   a boolean flag indicating whether this refers to
+                         valid dataset.  This is set to False, for example,
+                         if the dataset was not successfully created.
         @param ids     a dictionary of identifiers, mapping names to values.
                          the type of the identifier is context specific.
         @param *       additional named parameters are taken as 
@@ -30,6 +33,7 @@ class Dataset(object):
         """
         self.type = type
         self.path = path
+        self.valid = valid
 
         self.ids = None
         if ids:
@@ -74,6 +78,7 @@ class Dataset(object):
                 ids.set(id, self.ids[id])
 
         if self.path:  policy.set("path", self.path)
+        if self.valid is not None:  policy.set("valid", self.valid)
 
         return policy
 
@@ -85,17 +90,18 @@ class Dataset(object):
         """
         unserialize a dataset description from a policy
         """
-        type = ids = path = None
+        valid = type = ids = path = None
 
-        if policy.exists("type"):  type = policy.getString("type")
-        if policy.exists("path"):  path = policy.getString("path")
+        if policy.exists("type"):  type  = policy.getString("type")
+        if policy.exists("path"):  path  = policy.getString("path")
+        if policy.exists("valid"): valid = policy.getBool("valid")
         if policy.exists("ids"):  
             idp = policy.getPolicy("ids")
             ids = {}
             for name in idp.paramNames():
                 ids[name] = idp.get(name)
 
-        return Dataset(type, path, ids)
+        return Dataset(type, path, valid, ids)
 
 
         

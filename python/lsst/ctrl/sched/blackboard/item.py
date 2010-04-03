@@ -291,14 +291,9 @@ class DataProductItem(BasicBlackboardItem):
     SUCCESS    a boolean value indicating whether the product was
                  successfully created.  If False, an attempt to create the
                  product was made but it was unsuccessful.
-    TYPE       a name indicating the type of product
-    IDXTYPES   the names of indicies that characterize the 
+    DATASET    a policy-serialization of a Dataset description
     @endverbatim
-
-    Generally, the item will also contain the index values (as strings)
-    for each names given in IDXTYPES.
     """
-
     SUCCESS  = "SUCCESS"
     DATASET  = "DATASET"
     
@@ -312,12 +307,9 @@ class DataProductItem(BasicBlackboardItem):
         is set.
         @param impl     the item that is actually storing the properties
         @param name     the value for the NAME property (Default: empty string)
-        @param type     the value for the TYPE property, indicating the type
-                          of dataset being described (Default: empty string).
-        @param indexTypes  an array of names giving the names of the indexs
-                        that identify the dataset.
         @param success  True if the dataset was indeed successfully create.
                            (Default: True)
+        @param dataset  a full description of the dataset
         """
         BasicBlackboardItem.__init__(self, impl, name)
         if success is None and not impl.hasProperty(self.SUCCESS):
@@ -326,10 +318,14 @@ class DataProductItem(BasicBlackboardItem):
             impl._setProperty(self.SUCCESS, success)
 
         if dataset:
+            if success is None:
+                impl._setProperty(self.SUCCESS, dataset.valid)
             if isinstance(dataset, Dataset):
                 dataset = dataset.toPolicy()
             if not isinstance(dataset, Policy):
                 raise ValueError("DataProductItem: input dataset not Dataset or Policy")
+            if success is not None:
+                dataset.set("valid", success)
             impl._setProperty(self.DATASET, dataset)
 
     def getDataset(self):

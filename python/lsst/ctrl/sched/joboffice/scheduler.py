@@ -100,7 +100,7 @@ class DataTriggeredScheduler(Scheduler):
             self.nametmpl = pol.getString("template")
         self.nameNumber = pol.getInt("initCounter")
 
-    def processDataset(self, dataset, success=True):
+    def processDataset(self, dataset, success=None):
         """
         note that the given trigger dataset is now available and update
         the jobs on the jobsPossible queue.  A trigger dataset is a dataset
@@ -109,7 +109,9 @@ class DataTriggeredScheduler(Scheduler):
         place new jobs on the jobsPossible list based on the availability of
         this dataset.
         @param dataset    the trigger dataset that is now available.
-        @param success    True if the dataset was successfully created.
+        @param success    True if the dataset was successfully created.  If
+                             None (default), the dataset valid flag will be
+                             the indicator of success.
         """
 
         # determine if this is a trigger dataset
@@ -121,6 +123,9 @@ class DataTriggeredScheduler(Scheduler):
         if not recognized:
             self._debug("Dataset not needed: %s", dataset)
             return False
+
+        if success is None:
+            success = dataset.valid
 
         with self.bb.queues:
             product = DataProductItem.createItem(dataset, success)

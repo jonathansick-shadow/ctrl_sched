@@ -244,7 +244,7 @@ class DataProdBBItemTestCase(BasicBBItemTestCase1):
         self.bbi = bb.DataProductItem.createItem(dataset=ds,
                                            props={"foo": "bar", "count": 3,
                                                   "files": [ "goob", "gurn"] })
-        self.initCount = 11
+        self.initCount = 12
         
     def tearDown(self):
         pass

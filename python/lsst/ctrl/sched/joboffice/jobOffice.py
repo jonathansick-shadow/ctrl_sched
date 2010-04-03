@@ -5,10 +5,11 @@ from __future__ import with_statement
 
 import lsst.pex.exceptions
 from lsst.ctrl.sched.blackboard import Blackboard, Props
+from lsst.ctrl.sched.blackboard import BasicBlackboardItem, JobItem, DataProductItem
 from lsst.ctrl.sched.base import _AbstractBase
 from lsst.ctrl.sched import Dataset
-from lsst.ctrl.events import EventSystem
-from lsst.pex.policy import Policy, DefaultPolicyFile, PolicyString
+from lsst.ctrl.events import EventSystem, StatusEvent, CommandEvent
+from lsst.pex.policy import Policy, DefaultPolicyFile, PolicyString, PAFWriter
 from lsst.daf.base import PropertySet
 from lsst.pex.logging import Log
 from scheduler import DataTriggeredScheduler
@@ -255,7 +256,9 @@ class _BaseJobOffice(JobOffice):
         """
         props = PropertySet()
         for ds in job.getDatasets():
-            props.add("dataset", serialize(ds.toPolicy()))
+            props.add("dataset", serializePolicy(ds.toPolicy()))
+        props.set("STATUS", "process")
+        props.set("name", job.getName())
         return CommandEvent(runid, pipeline, props)
         
 
@@ -312,7 +315,7 @@ class DataTriggeredJobOffice(_BaseJobOffice):
         @param event    the data event.  
         @return bool    true if the event was processed.
         """
-        dsps = event.getProperties.getArray("dataset")
+        dsps = event.getPropertySet().getArrayString("dataset")
         for dsp in dsps:
             self.scheduler.processDataset(self.datasetFromProperty(dsp))
 
@@ -334,10 +337,14 @@ class DataTriggeredJobOffice(_BaseJobOffice):
         """
         convert a pipeline-ready event into a pipeline item.
         """
-        props = { "originator": pevent.getOriginator(),
+        props = { "originator": pevent.getOriginatorId(),
                   "ipid": pevent.getIPId(),
-                  "runid": pevent.getRunId()            }
-        pipe = BasicBlackboardItem.createItem(pevent.getName(), props)
+                  "runid": pevent.getRunId(),
+                  "status":  pevent.getStatus()         }
+        pipename = "unknown"
+        if pevent.getPropertySet().exists("pipelineName"):
+            pipename = pevent.getPropertySet().getString("pipelineName")
+        pipe = BasicBlackboardItem.createItem(pipename, props)
         return pipe
 
     

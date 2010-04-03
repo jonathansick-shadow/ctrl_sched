@@ -9,16 +9,30 @@ import os
 import sys
 import unittest
 import time
+import copy
 
-from lsst.ctrl.sched.joboffice.jobOffice import JobOffice, _BaseJobOffice, DataTriggeredJobOffice
+from lsst.ctrl.sched.joboffice.jobOffice import JobOffice, _BaseJobOffice, DataTriggeredJobOffice, unserializePolicy
+from lsst.ctrl.sched.blackboard.item import JobItem, DataProductItem
 from lsst.ctrl.sched import Dataset
 from lsst.pex.policy import Policy, DefaultPolicyFile
+from lsst.daf.base import PropertySet
+from lsst.ctrl.events import StatusEvent, CommandEvent
 
 testdir = os.path.join(os.environ["CTRL_SCHED_DIR"], "tests")
 exampledir = os.path.join(os.environ["CTRL_SCHED_DIR"], "examples")
 bbdir = os.path.join(testdir, "testbb")
 policyFile = DefaultPolicyFile("ctrl_sched", "ccdassembly-joboffice.paf",
                                "examples")
+postisrdata = """#<?cfg paf policy ?>
+type: PostISR
+ids: {
+visit: 44291
+ccd: 3
+raft: 33
+snap: 0
+amp: 5
+}
+"""
 
 class AbstractJobOfficeTestCase(unittest.TestCase):
 
@@ -59,23 +73,69 @@ class DataTriggeredJobOfficeTestCase(unittest.TestCase):
           self.assertEquals(self.joboffice.bb.queues.dataAvailable.length(),0)
 
     def testDatasetFromProperty(self):
-        data = """#<?cfg paf policy ?>
-type: PostISR
-ids: {
-visit: 44291
-ccd: 3
-raft: 33
-snap: 0
-amp: 5
-}
-"""
-        ds = self.joboffice.datasetFromProperty(data)
+        ds = self.joboffice.datasetFromProperty(postisrdata)
         self.assertEquals(ds.type, "PostISR")
         self.assertEquals(ds.ids["visit"], 44291)
         self.assertEquals(ds.ids["ccd"], 3)
         self.assertEquals(ds.ids["raft"], 33)
         self.assertEquals(ds.ids["snap"], 0)
         self.assertEquals(ds.ids["amp"], 5)
+        return ds
+
+    def testToPipelineQueueItem(self):
+        pipelineName = "ccdassembly"
+        ps = PropertySet()
+        ps.set("pipelineName", pipelineName)
+        ps.set("STATUS", "done")
+        pevent = StatusEvent("testing", ps)
+        
+        item = self.joboffice.toPipelineQueueItem(pevent)
+        self.assertEquals(item.getName(), pipelineName)
+        self.assertEquals(item.getProperty("status"), "done")
+        self.assertEquals(item.getProperty("runid"), "testing")
+
+    def testMakeJobCommandEvent(self):
+        ds = self.testDatasetFromProperty()
+        dss = [ds]
+        for i in xrange(5):
+            ds = copy.deepcopy(ds)
+            ds.ids["amp"] += 1
+            dss.append(ds)
+
+        job = JobItem.createItem("ccdassembly", dss)
+        jev = self.joboffice.makeJobCommandEvent(job, 9993252, "testing")
+
+        self.assertEquals(jev.getStatus(), "process")
+        self.assertEquals(jev.getRunId(), "testing")
+        self.assertEquals(jev.getDestinationId(), 9993252)
+        self.assert_(jev.getPropertySet().exists("dataset"))
+
+        dodss = jev.getPropertySet().getArrayString("dataset")
+        self.assertEquals(len(dodss), 6)
+        i = 5
+        for ds in dodss:
+            ds = Dataset.fromPolicy(unserializePolicy(ds))
+            self.assertEquals(ds.type, "PostISR")
+            self.assertEquals(ds.ids["amp"], i)
+            self.assertEquals(ds.ids["visit"], 44291)
+            self.assertEquals(ds.ids["ccd"], 3)
+            self.assertEquals(ds.ids["raft"], 33)
+            self.assertEquals(ds.ids["snap"], 0)
+            i += 1
+
+    def testProcessDataEvent(self):
+        ds = self.testDatasetFromProperty()
+        dss = [ds]
+        for i in xrange(3):
+            ds = copy.deepcopy(ds)
+            ds.ids["amp"] += 1
+            dss.append(ds)
+
+        ps = PropertySet()
+        ps.set("pipelineName", "PostISR")
+        ps.set("STATUS", "available")
+        pevent = StatusEvent("testing", ps)
+        
 
 
 __all__ = "AbstractJobOfficeTestCase DataTriggeredJobOfficeTestCase".split()
