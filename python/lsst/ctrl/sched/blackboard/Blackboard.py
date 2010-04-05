@@ -96,10 +96,12 @@ class Blackboard(LockProtected):
                 self.queues.jobsAvailable.append(job)
                 
 
-    def allocateNextJob(self):
+    def allocateNextJob(self, pipelineId):
         """
         move the job at the front of the jobsAvailable queue to the
         jobsInProgress queue.
+        @param pipelineId  the originator ID for the pipeline that is taking
+                             this job.
         @return JobItem    the job that was moved 
         """
         with self:
@@ -107,7 +109,10 @@ class Blackboard(LockProtected):
             if self.queues.jobsAvailable.isEmpty():
                 raise EmptyQueueError("jobsAvailable")
             with self.queues.jobsInProgress:
-                self.queues.jobsAvailable.transferNextTo(self.queues.jobsInProgress)
+                job = self.queues.jobsAvailable.pop()
+                job.setPipelineId(pipelineId)
+                self.queues.jobsInProgress.append(job)
+                return job
 
 
     def markJobDone(self, job, success=True):

@@ -5,10 +5,10 @@ from __future__ import with_statement
 
 import lsst.pex.exceptions
 from lsst.ctrl.sched.blackboard import Blackboard, Props
-from lsst.ctrl.sched.blackboard import BasicBlackboardItem, JobItem, DataProductItem
+from lsst.ctrl.sched.blackboard import BasicBlackboardItem, PipelineItem, JobItem, DataProductItem
 from lsst.ctrl.sched.base import _AbstractBase
 from lsst.ctrl.sched import Dataset
-from lsst.ctrl.events import EventSystem, StatusEvent, CommandEvent
+from lsst.ctrl.events import EventSystem, EventReceiver, EventTransmitter, StatusEvent, CommandEvent
 from lsst.pex.policy import Policy, DefaultPolicyFile, PolicyString, PAFWriter
 from lsst.daf.base import PropertySet
 from lsst.pex.logging import Log
@@ -40,6 +40,7 @@ class JobOffice(_AbstractBase):
         self.esys = EventSystem.getDefaultEventSystem()
         self.halt = False
         self.running = False
+        self.originatorId = self.esys.createOriginatorId()
     
     def run(self, maxIterations=None):
         """
@@ -67,7 +68,7 @@ class _BaseJobOffice(JobOffice):
     """
 
     def __init__(self, rootdir, log=None, policy=None, defPolicyFile=None,
-                 fromSubclass=False):
+                 brokerHost=None, brokerPort=None, fromSubclass=False):
         """
         create the JobOffice
         @param rootdir        the root directory where job offices may set up
@@ -82,6 +83,14 @@ class _BaseJobOffice(JobOffice):
                                  validation will be done.  If None, an
                                  internally identified default policy file
                                  will be used.
+        @param brokerHost     the machine where the event broker is running.
+                                 If None (default), the host given in the
+                                 policy is used.  This parameter is for
+                                 carrying an override from the command line.
+        @param brokerHost     the port to use to connect to the event broker.
+                                 If None (default), the port given in the
+                                 policy is used.  This parameter is for
+                                 carrying an override from the command line.
         @param fromSubclass   the flag indicating that this constructor is
                                  being properly called.  Calls to this
                                  constructor from a subclass constructor should
@@ -121,6 +130,43 @@ class _BaseJobOffice(JobOffice):
         self.emptyWait = self.policy.get("listen.emptyWait")
         self.dataTopics = self.policy.getArray("listen.dataReadyEvent")
         self.jobTopic = self.policy.get("listen.pipelineEvent")
+
+        # initialize the event system
+        self.jobReadyEvRcvr = self.dataEvRcvrs = None
+        self.jobDoneEvRcvr = self.jobAcceptedEvRcvr = None
+        if not brokerPort and self.policy.exists("listen.brokerHostPort"):
+            brokerport = self.policy.get("listen.brokerHostPort")
+        if not brokerHost and (not brokerPort or brokerPort > 0):
+            brokerHost = self.policy.get("listen.brokerHostName")
+        if brokerPort is None:
+            self.dataEvRcvrs = []
+            for topic in self.dataTopics:
+                self.dataEvRcvrs.append(EventReceiver(brokerHost, topic))
+            self.jobReadyEvRcvr = EventReceiver(brokerHost, self.jobTopic,
+                                                "STATUS='job:ready'")
+            self.jobDoneEvRcvr = EventReceiver(brokerHost, self.jobTopic,
+                                               "STATUS='job:done'")
+            self.jobAcceptedEvRcvr = EventReceiver(brokerHost, self.jobTopic,
+                                                   "STATUS='job:accepted'")
+            self.jobAssignEvTrx = EventTransmitter(brokerHost, self.jobTopic)
+                                                   
+        elif brokerPort > 0:
+            self.dataEvRcvrs = []
+            for topic in self.dataTopics:
+                self.dataEvRcvrs.append(EventReceiver(brokerHost, brokerPort,
+                                                      topic))
+            self.jobReadyEvRcvr = EventReceiver(brokerHost, brokerPort,
+                                                jobTopic,
+                                                "STATUS='job:ready'")
+            self.jobDoneEvRcvr = EventReceiver(brokerHost, brokerPort,
+                                               jobTopic,
+                                               "STATUS='job:done'")
+            self.jobAcceptedEvRcvr = EventReceiver(brokerHost, brokerPort,
+                                                   jobTopic,
+                                                   "STATUS='job:accepted'")
+            self.jobAssignEvTrx = EventTransmitter(brokerHost, brokerPort,
+                                                   self.jobTopic)
+            
     
     def run(self, maxIterations=None):
         """
@@ -163,16 +209,14 @@ class _BaseJobOffice(JobOffice):
         """
         out = 0
         constraint = "status='job:done'",
-        jevent = self.esys.receiveEventWhere(self.jobTopic, constraint,
-                                             self.initialWait)
+        jevent = self.jobDoneEvRcvr.receiveStatusEvent(self.initialWait)
         if not jevent:
             return 0
 
         while jevent:
             if self.processJobDoneEvent(jevent):
                 out += 1
-            jevent = self.esys.receiveEventsWhere(self.jobTopic, constraint,
-                                                  self.emptyWait)
+            jevent = self.jobDoneEvRcvr.receiveStatusEvent(self.emptyWait)
 
         return out
 
@@ -187,11 +231,19 @@ class _BaseJobOffice(JobOffice):
             return False
         
         with self.bb:
-            job = self.findOriginator(jevent.getOriginator())
+            job = self.findByPipelineId(jevent.getOriginatorId())
             if not job:
                 return False
-            self.bb.markJobDone(job, jevent.getProperties().getString("success"))
+            self.bb.markJobDone(job, jevent.getPropertySet().getAsBool("success"))
         return True
+
+    def findByPipelineId(self, id):
+        with self.bb.queues.jobsInProgress:
+            for i in xrange(self.bb.queues.jobsInProgress.length()):
+                job = self.bb.queues.jobsInProgress.get(i)
+                if job.getPipelineId() == id:
+                    return job
+        return None
 
     def processDataEvents(self):
         """
@@ -199,16 +251,31 @@ class _BaseJobOffice(JobOffice):
         @return int   the number of events processed
         """
         out = 0
-        devent = self.esys.receiveEvents(self.dataTopics, self.initialWait)
+        devent = self.receiveAnyDataEvent(self.initialWait)
         if not devent:
             return 0
 
         while devent:
             if self.processDataEvent(devent):
                 out += 1
-            devent = self.esys.receiveEvents(self.dataTopics, self.emptyWait)
+            devent = self.receiveAnyDataEvent(self.emptyWait)
 
         return out
+
+    def receiveAnyDataEvent(self, timeout):
+        if not self.dataEvRcvrs:
+            return None
+        if len(self.dataEvRcvrs) == 1:
+            return self.dataEvRcvrs[0].receiveStatusEvent(timeout)
+        
+        now = t0 = time.time()
+        eachtimeout = timeout/len(self.dataEvRcvrs)/10
+        if eachtimeout == 0:  eachtimeout = 1
+        while (now - t0 < timeout):
+            # take a tenth of the total timeout time to go through list
+            for rcvr in self.dataEvRcvrs:
+                rcvr.receiveStatusEvent(eachtimeout)
+            now = time.time()
 
     def processDataEvent(self, event):
         """
@@ -233,17 +300,17 @@ class _BaseJobOffice(JobOffice):
 
         out = 0
         with self.bb:
-            while not self.bb.queus.pipelinesReady.isEmpty() and \
-                  not self.bb.queus.jobsAvailable.isEmpty():
+            while not self.bb.queues.pipelinesReady.isEmpty() and \
+                  not self.bb.queues.jobsAvailable.isEmpty():
 
-                with self.bb.pipelinesReady:
-                    pipe = self.bb.pipelinesReady.pop()
-                    job = self.bb.queus.jobsAvailable.get(0)
+                with self.bb.queues.pipelinesReady:
+                    pipe = self.bb.queues.pipelinesReady.pop()
+                    job = self.bb.queues.jobsAvailable.get(0)
 
                     # send a command to that pipeline
                     cmd = self.makeJobCommandEvent(job, pipe.getOriginator(),
                                                    pipe.getRunId())
-                    self.esys.publish(cmd, self.jobTopic)
+                    self.jobAssignEvTrx.publishEvent(cmd)
                     self.bb.allocateNextJob(pipe.getOriginator())
                     out += 1
 
@@ -257,9 +324,9 @@ class _BaseJobOffice(JobOffice):
         props = PropertySet()
         for ds in job.getDatasets():
             props.add("dataset", serializePolicy(ds.toPolicy()))
-        props.set("STATUS", "process")
+        props.set("STATUS", "job:process")
         props.set("name", job.getName())
-        return CommandEvent(runid, pipeline, props)
+        return CommandEvent(runid, self.originatorId, pipeline, props)
         
 
     def receiveReadyPipelines(self):
@@ -268,9 +335,7 @@ class _BaseJobOffice(JobOffice):
         queue
         """
         out = 0
-        constraint = "status='job:ready'",
-        pevent = self.esys.receiveEventWhere(self.jobTopic, constraint,
-                                             self.initialWait)
+        pevent = self.jobReadyEvRcvr.receiveStatusEvent(self.initialWait)
         if not pevent:
             return 0
 
@@ -280,8 +345,7 @@ class _BaseJobOffice(JobOffice):
                 with self.bb.queues:
                     self.bb.queues.pipelinesReady.append(pitem)
                 out += 1
-            pevent = self.esys.receiveEventsWhere(self.jobTopic, constraint,
-                                                  self.emptyWait)
+            pevent = self.jobReadyEvRcvr.receiveStatusEvent(self.emptyWait)
 
         return out
 
@@ -297,11 +361,13 @@ class DataTriggeredJobOffice(_BaseJobOffice):
     of data in the configuring policy file.  
     """
     
-    def __init__(self, rootdir, log=None, policy=None):
+    def __init__(self, rootdir, log=None, policy=None, brokerHost=None,
+                 brokerPort=None):
         dpolf = DefaultPolicyFile("ctrl_sched",
                                   "DataTriggeredJobOffice_dict.paf",
                                   "policies")
-        _BaseJobOffice.__init__(self, rootdir, log, policy, dpolf, True)
+        _BaseJobOffice.__init__(self, rootdir, log, policy, dpolf,
+                                brokerHost, brokerPort, True)
 
         # create a scheduler based on "schedule.className"
         self.scheduler = \
@@ -315,9 +381,12 @@ class DataTriggeredJobOffice(_BaseJobOffice):
         @param event    the data event.  
         @return bool    true if the event was processed.
         """
+        out = 0
         dsps = event.getPropertySet().getArrayString("dataset")
         for dsp in dsps:
-            self.scheduler.processDataset(self.datasetFromProperty(dsp))
+            if self.scheduler.processDataset(self.datasetFromProperty(dsp)):
+                out += 1
+        return out
 
         # wait until all events are processed
         #   self.scheduler.makeJobsAvailable()
@@ -337,14 +406,14 @@ class DataTriggeredJobOffice(_BaseJobOffice):
         """
         convert a pipeline-ready event into a pipeline item.
         """
-        props = { "originator": pevent.getOriginatorId(),
-                  "ipid": pevent.getIPId(),
-                  "runid": pevent.getRunId(),
-                  "status":  pevent.getStatus()         }
+        props = { "ipid": pevent.getIPId(),
+                  "status":  pevent.getStatus() }
         pipename = "unknown"
         if pevent.getPropertySet().exists("pipelineName"):
             pipename = pevent.getPropertySet().getString("pipelineName")
-        pipe = BasicBlackboardItem.createItem(pipename, props)
+        pipe = PipelineItem.createItem(pipename, pevent.getRunId(),
+                                       pevent.getOriginatorId(), props)
+                          
         return pipe
 
     

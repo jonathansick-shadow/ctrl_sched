@@ -270,6 +270,29 @@ class DataProdBBItemTestCase(BasicBBItemTestCase1):
         self.assertEquals(ds.ids["visitid"], 88)
         self.assertEquals(ds.ids["ccdid"], 12)
 
+class PipelineItemTestCase(unittest.TestCase):
+
+    def setUp(self):
+        self.pipeline = bb.PipelineItem.createItem("job", "testing", 4294967304L)
+    def tearDown(self):
+        pass
+
+    def testOriginatorEncoding(self):
+        #pdb.set_trace()
+        pair = self.pipeline._encodeId(4294967304L)
+        self.assertEquals(pair[0], 0)
+        self.assertEquals(pair[1], 1)
+        self.assertEquals(pair[2], 0)
+        self.assertEquals(pair[3], 8)
+        self.assertEquals(self.pipeline._decodeId(pair), 4294967304L)
+        self.assertEquals(self.pipeline.getOriginator(), 4294967304L)
+
+        arb = 736429496730412L
+        self.assertEquals(self.pipeline._decodeId(self.pipeline._encodeId(arb)),
+                          arb)
+        
+        
+
 __all__ = "AbsBBItemTestCase DictBBItemTestCase PolicyBBItemTestCase ImplBBItemTestCase1".split()
 
 if __name__ == "__main__":

@@ -7,4 +7,4 @@ from item       import *
 from queue      import *
 from Blackboard import *
 
-__all__ = "BlackboardItem BasicBlackboardItem DataProductItem JobItem Props BlackboardItemQueue BasicBlackboardQueue Blackboard".split()
+__all__ = "BlackboardItem BasicBlackboardItem DataProductItem JobItem PipelineItem Props BlackboardItemQueue BasicBlackboardQueue Blackboard".split()

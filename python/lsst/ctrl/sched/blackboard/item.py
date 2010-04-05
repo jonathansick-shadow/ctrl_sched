@@ -370,10 +370,79 @@ class DataProductItem(BasicBlackboardItem):
         out = DataProductItem(impl, name, success, dataset)
         return out
 
+class PipelineItem(BasicBlackboardItem):
+    """
+    a BlackboardItem representing pipeline that is ready to run a job.
+
+    It supports the following common properties:
+    @verbatim
+    NAME        a name for the item.  There is no expectation that it is 
+                  unique across items, but typically it is.
+    ORIGINATOR  a unique identifier for the instance of the pipeline that
+                  this item represents.  
+    @endverbatim
+
+    These are normally created via createItem() which chooses the internal
+    representation of the data.
+    """
+    ORIGINATOR = "ORIGINATOR"
+    RUNID = "RUNID"
+
+    def __init__(self, impl, name, runid, pipelineId):
+        """
+        create the item
+        @param impl         the item that is actually storing the properties
+        @param name         the value for the NAME property.
+        @param pipelineId   the unique Id for the pipeline
+        """
+        BasicBlackboardItem.__init__(self, impl, name)
+        self._setProperty(self.ORIGINATOR, _encodeId(pipelineId))
+        self._setProperty(self.RUNID, runid)
+
+    def getOriginator(self):
+        """
+        return the identifier for the pipeline
+        """
+        return _decodeId(self.getProperty(self.ORIGINATOR))
+
+    def getRunId(self):
+        """
+        return the run ID for the pipeline
+        """
+        return self.getProperty(self.RUNID)
+
+    @staticmethod
+    def createItem(name, runId, pipelineId, props=None):
+        """
+        create a BlackboardItem with the given properties
+        @param name         the item name
+        @param runId        the run ID that the pipeline is running under
+        @param pipelineId   the unique ID for pipeline this represents
+        @param props        a dictionary of properties
+        """
+        impl = PolicyBlackboardItem()
+        if props:
+            for key in props.keys():
+                impl._setProperty(key, props[key])
+        out = PipelineItem(impl, name, runId, pipelineId)
+        return out
+
+def _encodeId(id):
+    prts = []
+    prts.append(int((id >> 48) & 0xffff))
+    prts.append(int((id >> 32) & 0xffff))
+    prts.append(int((id >> 16) & 0xffff))
+    prts.append(int(id & 0xffff))
+    return prts
+def _decodeId(quad):
+    return long(((1L *quad[0]) << 48) | ((1L *quad[1]) << 32) |
+                ((1L *quad[2]) << 16) | quad[3])
+
+    
 
 class JobItem(BasicBlackboardItem):
     """
-    A simple, generic BlackboardItem.
+    A BlackboardItem representing a job to be processed by a pipeline.
 
     It supports the following common properties:
     @verbatim
@@ -387,6 +456,7 @@ class JobItem(BasicBlackboardItem):
     """
 
     DATASETS = "DATASETS"
+    PIPELINEID = "PIPELINEID"
 
     def __init__(self, impl, name=None, datasets=None, triggerHandler=None):
         """
@@ -442,7 +512,11 @@ class JobItem(BasicBlackboardItem):
         ready to be scheduled to a pipeline.
         """
         return self.triggerHandler is not None and self.triggerHandler.isReady()
-        
+    def setPipelineId(self, id):
+        self._setProperty(self.PIPELINEID, _encodeId(id))
+
+    def getPipelineId(self):
+        return _decodeId(self.getProperty(self.PIPELINEID))
 
     @staticmethod
     def createItem(name, datasets=None, triggerHandler=None, props=None):
@@ -469,4 +543,4 @@ class Props(object):
     DATASETS =             JobItem.DATASETS
 
 
-__all__ = "BlackboardItem DictBlackboardItem PolicyBlackboardItem ImplBlackboardItem BasicBlackboardItem DataProductItem JobItem Props".split()
+__all__ = "BlackboardItem DictBlackboardItem PolicyBlackboardItem ImplBlackboardItem BasicBlackboardItem DataProductItem PipelineItem JobItem Props".split()

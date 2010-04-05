@@ -109,10 +109,13 @@ class BlackboardItemQueue(_AbstractBase):
         @param priority  a measure of the priority for this item.  This value
                             may be used to determine the proper position in
                             the destination queue.
+        @return BlackboardQueueItem     the item that was moved
         """
         if self.isEmpty():
             raise EmptyQueueError()
-        queue.insert(self.pop(), priority)
+        item = self.pop()
+        queue.insert(item, priority)
+        return item
 
     def iterate(self):
         """

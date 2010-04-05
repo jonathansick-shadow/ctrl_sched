@@ -11,12 +11,12 @@ import unittest
 import time
 import copy
 
-from lsst.ctrl.sched.joboffice.jobOffice import JobOffice, _BaseJobOffice, DataTriggeredJobOffice, unserializePolicy
+from lsst.ctrl.sched.joboffice.jobOffice import JobOffice, _BaseJobOffice, DataTriggeredJobOffice, unserializePolicy, serializePolicy
 from lsst.ctrl.sched.blackboard.item import JobItem, DataProductItem
 from lsst.ctrl.sched import Dataset
 from lsst.pex.policy import Policy, DefaultPolicyFile
 from lsst.daf.base import PropertySet
-from lsst.ctrl.events import StatusEvent, CommandEvent
+from lsst.ctrl.events import StatusEvent, CommandEvent, EventTransmitter, EventSystem
 
 testdir = os.path.join(os.environ["CTRL_SCHED_DIR"], "tests")
 exampledir = os.path.join(os.environ["CTRL_SCHED_DIR"], "examples")
@@ -30,9 +30,11 @@ visit: 44291
 ccd: 3
 raft: 33
 snap: 0
-amp: 5
+ampid: 5
 }
 """
+brokerhost = "lsst8.ncsa.uiuc.edu"
+originatorId = EventSystem.getDefaultEventSystem().createOriginatorId()
 
 class AbstractJobOfficeTestCase(unittest.TestCase):
 
@@ -55,7 +57,8 @@ class AbstractJobOfficeTestCase(unittest.TestCase):
 class DataTriggeredJobOfficeTestCase(unittest.TestCase):
     def setUp(self):
         policy = Policy.createPolicy(policyFile)
-        self.joboffice = DataTriggeredJobOffice(testdir, policy=policy)
+        self.joboffice = DataTriggeredJobOffice(testdir, policy=policy,
+                                                brokerHost=brokerhost)
         self.jodir = os.path.join(testdir, "ccdassembly")
         
     def tearDown(self):
@@ -79,7 +82,7 @@ class DataTriggeredJobOfficeTestCase(unittest.TestCase):
         self.assertEquals(ds.ids["ccd"], 3)
         self.assertEquals(ds.ids["raft"], 33)
         self.assertEquals(ds.ids["snap"], 0)
-        self.assertEquals(ds.ids["amp"], 5)
+        self.assertEquals(ds.ids["ampid"], 5)
         return ds
 
     def testToPipelineQueueItem(self):
@@ -87,36 +90,37 @@ class DataTriggeredJobOfficeTestCase(unittest.TestCase):
         ps = PropertySet()
         ps.set("pipelineName", pipelineName)
         ps.set("STATUS", "done")
-        pevent = StatusEvent("testing", ps)
-        
+        ps.set("RUNID", "testing")
+        pevent = StatusEvent("testing", originatorId, ps)
+
         item = self.joboffice.toPipelineQueueItem(pevent)
         self.assertEquals(item.getName(), pipelineName)
         self.assertEquals(item.getProperty("status"), "done")
-        self.assertEquals(item.getProperty("runid"), "testing")
+        self.assertEquals(item.getRunId(), "testing")
 
     def testMakeJobCommandEvent(self):
         ds = self.testDatasetFromProperty()
         dss = [ds]
-        for i in xrange(5):
+        for i in xrange(1, 5):
             ds = copy.deepcopy(ds)
-            ds.ids["amp"] += 1
+            ds.ids["ampid"] += 1
             dss.append(ds)
 
         job = JobItem.createItem("ccdassembly", dss)
         jev = self.joboffice.makeJobCommandEvent(job, 9993252, "testing")
 
-        self.assertEquals(jev.getStatus(), "process")
+        self.assertEquals(jev.getStatus(), "job:process")
         self.assertEquals(jev.getRunId(), "testing")
         self.assertEquals(jev.getDestinationId(), 9993252)
         self.assert_(jev.getPropertySet().exists("dataset"))
 
         dodss = jev.getPropertySet().getArrayString("dataset")
-        self.assertEquals(len(dodss), 6)
+        self.assertEquals(len(dodss), 5)
         i = 5
         for ds in dodss:
             ds = Dataset.fromPolicy(unserializePolicy(ds))
             self.assertEquals(ds.type, "PostISR")
-            self.assertEquals(ds.ids["amp"], i)
+            self.assertEquals(ds.ids["ampid"], i)
             self.assertEquals(ds.ids["visit"], 44291)
             self.assertEquals(ds.ids["ccd"], 3)
             self.assertEquals(ds.ids["raft"], 33)
@@ -124,21 +128,246 @@ class DataTriggeredJobOfficeTestCase(unittest.TestCase):
             i += 1
 
     def testProcessDataEvent(self):
-        ds = self.testDatasetFromProperty()
-        dss = [ds]
-        for i in xrange(3):
-            ds = copy.deepcopy(ds)
-            ds.ids["amp"] += 1
-            dss.append(ds)
+        with self.joboffice.bb.queues:
+          self.assertEquals(self.joboffice.bb.queues.dataAvailable.length(), 0)
 
         ps = PropertySet()
         ps.set("pipelineName", "PostISR")
         ps.set("STATUS", "available")
-        pevent = StatusEvent("testing", ps)
+
+        ds = self.testDatasetFromProperty()
+        ps.add("dataset", serializePolicy(ds.toPolicy()))
+        for i in xrange(1,4):
+            ds = copy.deepcopy(ds)
+            ds.ids["ampid"] += 1
+            ps.add("dataset", serializePolicy(ds.toPolicy()))
+
+        devent = StatusEvent("testing", originatorId, ps)
+
+        # pdb.set_trace()
+        self.joboffice.processDataEvent(devent)
+
+        with self.joboffice.bb.queues:
+          self.assertEquals(self.joboffice.bb.queues.dataAvailable.length(), 4)
+          self.assertEquals(self.joboffice.bb.queues.jobsPossible.length(), 1)
+          job = self.joboffice.bb.queues.jobsPossible.get(0)
+          self.assertEquals(job.getName(), "Job-1")
+          self.assertEquals(job.triggerHandler.getNeededDatasetCount(), 12)
+    
+    def testProcessDataEvents(self):
+        with self.joboffice.bb.queues:
+          self.assertEquals(self.joboffice.bb.queues.dataAvailable.length(), 0)
+
+        trx = EventTransmitter(brokerhost, "PostISRAvailable")
+
+        ps = PropertySet()
+        ps.set("pipelineName", "PostISR")
+        ps.set("STATUS", "available")
+
+        ds = self.testDatasetFromProperty()
+        ds.ids["ampid"] = 0;
+        ps.set("dataset", serializePolicy(ds.toPolicy()))
+        # pdb.set_trace()
+        for i in xrange(15):
+            ps.set("dataset", serializePolicy(ds.toPolicy()))
+            devent = StatusEvent("testing", originatorId, ps)
+
+            trx.publishEvent(devent);
+
+            ds = copy.deepcopy(ds)
+            ds.ids["ampid"] += 1
+
+        self.joboffice.processDataEvents()
         
+        with self.joboffice.bb.queues:
+          self.assertEquals(self.joboffice.bb.queues.dataAvailable.length(),15)
+          self.assertEquals(self.joboffice.bb.queues.jobsPossible.length(), 1)
+          job = self.joboffice.bb.queues.jobsPossible.get(0)
+          self.assertEquals(job.getName(), "Job-1")
+          self.assertEquals(job.triggerHandler.getNeededDatasetCount(), 1)
+
+        ps.set("dataset", serializePolicy(ds.toPolicy()))
+        devent = StatusEvent("testing", originatorId, ps)
+        trx.publishEvent(devent);
+        self.joboffice.processDataEvents()
+        
+        with self.joboffice.bb.queues:
+          self.assertEquals(self.joboffice.bb.queues.dataAvailable.length(),16)
+          self.assertEquals(self.joboffice.bb.queues.jobsPossible.length(), 1)
+          job = self.joboffice.bb.queues.jobsPossible.get(0)
+          self.assertEquals(job.getName(), "Job-1")
+          self.assertEquals(job.triggerHandler.getNeededDatasetCount(), 0)
+
+    def testFindAvailableJobs(self):
+        self.testProcessDataEvents()
+
+        self.joboffice.findAvailableJobs()
+        
+        with self.joboffice.bb.queues:
+          self.assertEquals(self.joboffice.bb.queues.dataAvailable.length(),16)
+          self.assertEquals(self.joboffice.bb.queues.jobsPossible.length(), 0)
+          self.assertEquals(self.joboffice.bb.queues.jobsAvailable.length(), 1)
+          job = self.joboffice.bb.queues.jobsAvailable.get(0)
+          self.assertEquals(job.getName(), "Job-1")
+
+    def testReceiveReadyPipelines(self):
+        with self.joboffice.bb.queues:
+          self.assertEquals(self.joboffice.bb.queues.pipelinesReady.length(),0)
+
+        ps = PropertySet()
+        ps.set("pipelineName", "PostISR")
+        ps.set("STATUS", "job:ready")
+        pevent = StatusEvent("testing", originatorId, ps)
+        
+        trx = EventTransmitter(brokerhost, "CcdAssemblyJob")
+        trx.publishEvent(pevent)
+
+        self.joboffice.receiveReadyPipelines()
+
+        with self.joboffice.bb.queues:
+          self.assertEquals(self.joboffice.bb.queues.pipelinesReady.length(),1)
+        
+    def testAllocateJobs(self):
+        # pdb.set_trace()
+        self.testReceiveReadyPipelines()
+        self.testFindAvailableJobs()
+
+        with self.joboffice.bb.queues:
+          self.assertEquals(self.joboffice.bb.queues.pipelinesReady.length(),1)
+          self.assertEquals(self.joboffice.bb.queues.jobsAvailable.length(),1)
+          self.assertEquals(self.joboffice.bb.queues.jobsInProgress.length(),0)
+
+        self.joboffice.allocateJobs()
+
+        with self.joboffice.bb.queues:
+          self.assertEquals(self.joboffice.bb.queues.pipelinesReady.length(),0)
+          self.assertEquals(self.joboffice.bb.queues.jobsAvailable.length(),0)
+          self.assertEquals(self.joboffice.bb.queues.jobsInProgress.length(),1)
+
+    def testProcessJobDoneEvent(self):
+        with self.joboffice.bb.queues:
+          self.assertEquals(self.joboffice.bb.queues.jobsInProgress.length(),0)
+          self.assertEquals(self.joboffice.bb.queues.jobsDone.length(),0)
+
+        ps = PropertySet()
+        ps.set("pipelineName", "PostISR")
+        ps.set("STATUS", "job:done")
+        ps.set("success", True)
+        pevent = StatusEvent("testing", originatorId, ps)
+
+        self.assert_(not self.joboffice.processJobDoneEvent(pevent))
+
+        self.testAllocateJobs()
+        
+        with self.joboffice.bb.queues:
+          self.assertEquals(self.joboffice.bb.queues.jobsInProgress.length(),1)
+          self.assertEquals(self.joboffice.bb.queues.jobsDone.length(),0)
+
+        # pdb.set_trace()
+        self.assert_(self.joboffice.processJobDoneEvent(pevent))
+        with self.joboffice.bb.queues:
+          self.assertEquals(self.joboffice.bb.queues.jobsInProgress.length(),0)
+          self.assertEquals(self.joboffice.bb.queues.jobsDone.length(),1)
+        
+    def testProcessJobDoneEvents(self):
+        with self.joboffice.bb.queues:
+          self.assertEquals(self.joboffice.bb.queues.jobsInProgress.length(),0)
+          self.assertEquals(self.joboffice.bb.queues.jobsDone.length(),0)
+
+        self.testAllocateJobs()
+        with self.joboffice.bb.queues:
+          self.assertEquals(self.joboffice.bb.queues.jobsInProgress.length(),1)
+          self.assertEquals(self.joboffice.bb.queues.jobsDone.length(),0)
+
+        ps = PropertySet()
+        ps.set("pipelineName", "PostISR")
+        ps.set("STATUS", "job:done")
+        ps.set("success", True)
+        pevent = StatusEvent("testing", originatorId, ps)
+        trx = EventTransmitter(brokerhost, "CcdAssemblyJob")
+        trx.publishEvent(pevent)
+
+        self.joboffice.processDoneJobs()
+        with self.joboffice.bb.queues:
+          self.assertEquals(self.joboffice.bb.queues.jobsInProgress.length(),0)
+          self.assertEquals(self.joboffice.bb.queues.jobsDone.length(),1)
+
+
+    def testRun(self):
+        with self.joboffice.bb.queues:
+          self.assertEquals(self.joboffice.bb.queues.jobsInProgress.length(),0)
+          self.assertEquals(self.joboffice.bb.queues.jobsDone.length(),0)
+          self.assertEquals(self.joboffice.bb.queues.jobsAvailable.length(),0)
+          self.assertEquals(self.joboffice.bb.queues.dataAvailable.length(),0)
+
+        trxpipe = EventTransmitter(brokerhost, "CcdAssemblyJob")
+        ps = PropertySet()
+        ps.set("pipelineName", "PostISR")
+        ps.set("STATUS", "job:ready")
+        pevent = StatusEvent("testing", originatorId, ps)
+        trxpipe.publishEvent(pevent)
+
+        self.joboffice.run(1)
+        
+        with self.joboffice.bb.queues:
+          self.assertEquals(self.joboffice.bb.queues.pipelinesReady.length(),1)
+          self.assertEquals(self.joboffice.bb.queues.jobsInProgress.length(),0)
+
+        trxdata = EventTransmitter(brokerhost, "PostISRAvailable")
+
+        ps = PropertySet()
+        ps.set("pipelineName", "PostISR")
+        ps.set("STATUS", "available")
+
+        ds = self.testDatasetFromProperty()
+        ds.ids["ampid"] = 0;
+        ps.set("dataset", serializePolicy(ds.toPolicy()))
+        # pdb.set_trace()
+        for i in xrange(16):
+            ps.set("dataset", serializePolicy(ds.toPolicy()))
+            devent = StatusEvent("testing", originatorId, ps)
+
+            trxdata.publishEvent(devent);
+
+            ds = copy.deepcopy(ds)
+            ds.ids["ampid"] += 1
+
+        self.joboffice.run(1)
+        
+        with self.joboffice.bb.queues:
+          self.assertEquals(self.joboffice.bb.queues.jobsInProgress.length(),1)
+          self.assertEquals(self.joboffice.bb.queues.jobsDone.length(),0)
+          self.assertEquals(self.joboffice.bb.queues.jobsAvailable.length(),0)
+          self.assertEquals(self.joboffice.bb.queues.dataAvailable.length(),16)
+
+        ps = PropertySet()
+        ps.set("pipelineName", "PostISR")
+        ps.set("STATUS", "job:done")
+        ps.set("success", True)
+        jevent = StatusEvent("testing", originatorId, ps)
+        trxpipe.publishEvent(jevent)
+
+        self.joboffice.run(1)
+        
+        with self.joboffice.bb.queues:
+          self.assertEquals(self.joboffice.bb.queues.jobsInProgress.length(),0)
+          self.assertEquals(self.joboffice.bb.queues.jobsDone.length(),1)
+          self.assertEquals(self.joboffice.bb.queues.jobsAvailable.length(),0)
+          self.assertEquals(self.joboffice.bb.queues.dataAvailable.length(),16)
+
+        
+        
+
+
+        
+        
+        
+            
 
 
 __all__ = "AbstractJobOfficeTestCase DataTriggeredJobOfficeTestCase".split()
 
 if __name__ == "__main__":
+    if len(sys.argv) > 1:
+        brokerhost = sys.argv.pop(1)
     unittest.main()
