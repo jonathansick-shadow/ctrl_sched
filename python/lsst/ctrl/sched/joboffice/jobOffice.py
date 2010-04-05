@@ -14,7 +14,7 @@ from lsst.daf.base import PropertySet
 from lsst.pex.logging import Log
 from scheduler import DataTriggeredScheduler
 
-import os, time
+import os, time, threading
 
 def serializePolicy(policy):
     writer = PAFWriter()
@@ -24,7 +24,7 @@ def serializePolicy(policy):
 def unserializePolicy(policystr):
     return Policy.createPolicy(PolicyString(policystr))
 
-class JobOffice(_AbstractBase):
+class JobOffice(_AbstractBase, threading.Thread):
     """
     an abstract class that is responsible for using a blackboard to track
     the progress of running pipelines and sending them jobs as needed.
@@ -35,13 +35,14 @@ class JobOffice(_AbstractBase):
         create the JobOffice
         """
         self._checkAbstract(fromSubclass, "JobOffice")
+        threading.Thread.__init__(self)
         
         self.bb = Blackboard(persistDir)
         self.esys = EventSystem.getDefaultEventSystem()
         self.halt = False
         self.running = False
         self.originatorId = self.esys.createOriginatorId()
-    
+
     def run(self, maxIterations=None):
         """
         continuously listen for events from pipelines and schedule jobs

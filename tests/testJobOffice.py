@@ -355,8 +355,75 @@ class DataTriggeredJobOfficeTestCase(unittest.TestCase):
           self.assertEquals(self.joboffice.bb.queues.jobsAvailable.length(),0)
           self.assertEquals(self.joboffice.bb.queues.dataAvailable.length(),16)
 
-        
-        
+    def testRunInThread(self):
+      self.assert_(not self.joboffice.isAlive())
+      self.joboffice.start()
+      self.assert_(self.joboffice.isAlive())
+
+      try:
+        with self.joboffice.bb.queues:
+          self.assertEquals(self.joboffice.bb.queues.jobsInProgress.length(),0)
+          self.assertEquals(self.joboffice.bb.queues.jobsDone.length(),0)
+          self.assertEquals(self.joboffice.bb.queues.jobsAvailable.length(),0)
+          self.assertEquals(self.joboffice.bb.queues.dataAvailable.length(),0)
+
+        trxpipe = EventTransmitter(brokerhost, "CcdAssemblyJob")
+        ps = PropertySet()
+        ps.set("pipelineName", "PostISR")
+        ps.set("STATUS", "job:ready")
+        pevent = StatusEvent("testing", originatorId, ps)
+        trxpipe.publishEvent(pevent)
+        time.sleep(1.0)
+
+        with self.joboffice.bb.queues:
+          self.assertEquals(self.joboffice.bb.queues.pipelinesReady.length(),1)
+          self.assertEquals(self.joboffice.bb.queues.jobsInProgress.length(),0)
+
+        trxdata = EventTransmitter(brokerhost, "PostISRAvailable")
+
+        ps = PropertySet()
+        ps.set("pipelineName", "PostISR")
+        ps.set("STATUS", "available")
+
+        ds = self.testDatasetFromProperty()
+        ds.ids["ampid"] = 0;
+        ps.set("dataset", serializePolicy(ds.toPolicy()))
+        # pdb.set_trace()
+        for i in xrange(16):
+            ps.set("dataset", serializePolicy(ds.toPolicy()))
+            devent = StatusEvent("testing", originatorId, ps)
+
+            trxdata.publishEvent(devent);
+
+            ds = copy.deepcopy(ds)
+            ds.ids["ampid"] += 1
+        time.sleep(1.0)
+
+        with self.joboffice.bb.queues:
+          self.assertEquals(self.joboffice.bb.queues.jobsInProgress.length(),1)
+          self.assertEquals(self.joboffice.bb.queues.jobsDone.length(),0)
+          self.assertEquals(self.joboffice.bb.queues.jobsAvailable.length(),0)
+          self.assertEquals(self.joboffice.bb.queues.dataAvailable.length(),16)
+
+        ps = PropertySet()
+        ps.set("pipelineName", "PostISR")
+        ps.set("STATUS", "job:done")
+        ps.set("success", True)
+        jevent = StatusEvent("testing", originatorId, ps)
+        trxpipe.publishEvent(jevent)
+        time.sleep(1.0)
+
+        with self.joboffice.bb.queues:
+          self.assertEquals(self.joboffice.bb.queues.jobsInProgress.length(),0)
+          self.assertEquals(self.joboffice.bb.queues.jobsDone.length(),1)
+          self.assertEquals(self.joboffice.bb.queues.jobsAvailable.length(),0)
+          self.assertEquals(self.joboffice.bb.queues.dataAvailable.length(),16)
+
+      finally:
+        self.joboffice.stop()
+        if self.joboffice.isAlive():
+            self.joboffice.join(10.0)
+
 
 
         
