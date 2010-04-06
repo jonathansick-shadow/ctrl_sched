@@ -30,20 +30,29 @@ class JobOffice(_AbstractBase, threading.Thread):
     the progress of running pipelines and sending them jobs as needed.
     """
 
-    def __init__(self, persistDir, fromSubclass=False):
+    def __init__(self, persistDir, logger=None, fromSubclass=False):
         """
         create the JobOffice
         """
         self._checkAbstract(fromSubclass, "JobOffice")
-        threading.Thread.__init__(self)
-        
+        threading.Thread.__init__(self, name="JobOffice")
+        self.setDaemon(False)
+
         self.bb = Blackboard(persistDir)
         self.esys = EventSystem.getDefaultEventSystem()
-        self.halt = False
-        self.running = False
+        self.brokerHost = None
+        self.brokerPort = None
         self.originatorId = self.esys.createOriginatorId()
 
-    def run(self, maxIterations=None):
+        if logger is None:
+            logger = Log.getDefaultLog()
+        self.log = logger   # override this in sub-class
+
+        self.halt = False
+        self.stopTopic = "JobOfficeStop"
+        self.stopThread = None
+
+    def managePipelines(self, maxIterations=None):
         """
         continuously listen for events from pipelines and schedule jobs
         accordingly.  Unless maxIterations is set, this function will only
@@ -56,11 +65,50 @@ class JobOffice(_AbstractBase, threading.Thread):
         """
         self._notImplemented("run")
 
+    def run(self):
+        """
+        execute managePipelines in the context of a separate thread.
+        """
+        self._checkAbstract(self.brokerHost, "JobOffice")
+        self.stopThread = self._StopThread(self, self.stopTopic,
+                                           self.brokerHost, self.brokerPort)
+        self.stopThread.start()
+        self.managePipelines()
+
     def stop(self):
         """
         set the stop flag to tell the JobOffice to stop running.
         """
         self.halt = True
+
+    class _StopThread(threading.Thread):
+
+        def __init__(self, joboffice, stopTopic, brokerHost, brokerPort=None,
+                     waittime=60):
+
+            threading.Thread.__init__(self, name=joboffice.getName()+".stop")
+            self.setDaemon(True)
+            
+            self.jo = joboffice
+            self.timeout = waittime
+
+            self.log = Log(self.jo.log, "stop")
+
+            if brokerPort:
+                self.rcvr = EventReceiver(brokerHost, brokerPort, stopTopic)
+            else:
+                self.rcvr = EventReceiver(brokerHost, stopTopic)
+                
+        def run(self):
+            while True:
+                event = self.rcvr.receiveEvent(self.timeout)
+                if event:
+                    self.log.log(Log.INFO-1, "received stop event; " +
+                                 "shutting down JobOffice thread")
+                    self.jo.stop()
+                if self.jo.halt:
+                    return
+            
 
 class _BaseJobOffice(JobOffice):
     """
@@ -119,57 +167,64 @@ class _BaseJobOffice(JobOffice):
         self.name = self.policy.get("name")
         persistDir = self.policy.get("persist.dir") % {"schedroot": rootdir, 
                                                        "name": self.name    }
-        JobOffice.__init__(self, persistDir, True)
+        JobOffice.__init__(self, persistDir, log, True)
+        self.setName(self.name)
 
         # logger
-        if not log:
-            log = Log(Log.getDefaultLog(), self.name)
-        self.log = log
+        self.log = Log(self.log, self.name)
 
         # initialize some data from policy
         self.initialWait = self.policy.get("listen.initialWait")
         self.emptyWait = self.policy.get("listen.emptyWait")
         self.dataTopics = self.policy.getArray("listen.dataReadyEvent")
         self.jobTopic = self.policy.get("listen.pipelineEvent")
+        self.stopTopic = self.policy.get("listen.stopEvent")
 
         # initialize the event system
         self.jobReadyEvRcvr = self.dataEvRcvrs = None
         self.jobDoneEvRcvr = self.jobAcceptedEvRcvr = None
-        if not brokerPort and self.policy.exists("listen.brokerHostPort"):
-            brokerport = self.policy.get("listen.brokerHostPort")
-        if not brokerHost and (not brokerPort or brokerPort > 0):
-            brokerHost = self.policy.get("listen.brokerHostName")
-        if brokerPort is None:
+        if not self.brokerPort and self.policy.exists("listen.brokerHostPort"):
+            self.brokerport = self.policy.get("listen.brokerHostPort")
+        if not self.brokerHost and (not self.brokerPort or self.brokerPort > 0):
+            self.brokerHost = self.policy.get("listen.brokerHostName")
+        if self.brokerPort is None:
             self.dataEvRcvrs = []
             for topic in self.dataTopics:
-                self.dataEvRcvrs.append(EventReceiver(brokerHost, topic))
-            self.jobReadyEvRcvr = EventReceiver(brokerHost, self.jobTopic,
+                self.dataEvRcvrs.append(EventReceiver(self.brokerHost, topic))
+            self.jobReadyEvRcvr = EventReceiver(self.brokerHost, self.jobTopic,
                                                 "STATUS='job:ready'")
-            self.jobDoneEvRcvr = EventReceiver(brokerHost, self.jobTopic,
+            self.jobDoneEvRcvr = EventReceiver(self.brokerHost, self.jobTopic,
                                                "STATUS='job:done'")
-            self.jobAcceptedEvRcvr = EventReceiver(brokerHost, self.jobTopic,
+            self.jobAcceptedEvRcvr = EventReceiver(self.brokerHost,
+                                                   self.jobTopic,
                                                    "STATUS='job:accepted'")
-            self.jobAssignEvTrx = EventTransmitter(brokerHost, self.jobTopic)
+            self.jobAssignEvTrx = EventTransmitter(self.brokerHost,
+                                                   self.jobTopic)
                                                    
-        elif brokerPort > 0:
+        elif self.brokerPort > 0:
             self.dataEvRcvrs = []
             for topic in self.dataTopics:
-                self.dataEvRcvrs.append(EventReceiver(brokerHost, brokerPort,
+                self.dataEvRcvrs.append(EventReceiver(self.brokerHost,
+                                                      self.brokerPort,
                                                       topic))
-            self.jobReadyEvRcvr = EventReceiver(brokerHost, brokerPort,
+            self.jobReadyEvRcvr = EventReceiver(self.brokerHost,
+                                                self.brokerPort,
                                                 jobTopic,
                                                 "STATUS='job:ready'")
-            self.jobDoneEvRcvr = EventReceiver(brokerHost, brokerPort,
+            self.jobDoneEvRcvr = EventReceiver(self.brokerHost,
+                                               self.brokerPort,
                                                jobTopic,
                                                "STATUS='job:done'")
-            self.jobAcceptedEvRcvr = EventReceiver(brokerHost, brokerPort,
+            self.jobAcceptedEvRcvr = EventReceiver(self.brokerHost,
+                                                   self.brokerPort,
                                                    jobTopic,
                                                    "STATUS='job:accepted'")
-            self.jobAssignEvTrx = EventTransmitter(brokerHost, brokerPort,
+            self.jobAssignEvTrx = EventTransmitter(self.brokerHost,
+                                                   self.brokerPort,
                                                    self.jobTopic)
             
     
-    def run(self, maxIterations=None):
+    def managePipelines(self, maxIterations=None):
         """
         continuously listen for events from pipelines and schedule jobs
         accordingly.  Unless maxIterations is set, this function will only
@@ -185,6 +240,7 @@ class _BaseJobOffice(JobOffice):
         while i < max:
             if self.halt:
                 self.halt = False
+                self.log.log(Log.INFO, "Stop requested; shutting down.")
                 return
             
             # listen for completed Jobs
@@ -211,15 +267,40 @@ class _BaseJobOffice(JobOffice):
         out = 0
         constraint = "status='job:done'",
         jevent = self.jobDoneEvRcvr.receiveStatusEvent(self.initialWait)
+            
         if not jevent:
             return 0
 
         while jevent:
+            self._logJobDone(jevent)
             if self.processJobDoneEvent(jevent):
                 out += 1
             jevent = self.jobDoneEvRcvr.receiveStatusEvent(self.emptyWait)
 
         return out
+
+    def _logJobDone(self, jobevent):
+        try: 
+            self._debug("%s: %s on %s finised %s",
+                        (jobevent.getStatus(),
+                         jobevent.getPropertySet().getString("pipelineName"),
+                         jobevent.getHostId(),
+                         (jobevent.getPropertySet().getBool("success") and
+                          "successfully") or "with failure"))
+        except:
+            self._debug("logging error on " + jobevent.getStatus())
+
+    def _debug(self, msg, data=None):
+        if data is None:
+            self.log.log(Log.DEBUG, msg)
+        else:
+            self.log.log(Log.DEBUG, msg % data)
+            
+    def _log(self, msg, data=()):
+        if data is None:
+            self.log.log(Log.INFO, msg)
+        else:
+            self.log.log(Log.INFO, msg % data)
 
     def processJobDoneEvent(self, jevent):
         """
@@ -257,12 +338,19 @@ class _BaseJobOffice(JobOffice):
             return 0
 
         while devent:
+            self._logDataEvent(devent)
             if self.processDataEvent(devent):
                 out += 1
             devent = self.receiveAnyDataEvent(self.emptyWait)
 
         return out
 
+    def _logDataEvent(self, dataevent):
+        try: 
+            self._debug("%s dataset(s) ready", dataevent.getTopicName())
+        except:
+            self._debug("logging error on " + dataevent.getStatus())
+        
     def receiveAnyDataEvent(self, timeout):
         if not self.dataEvRcvrs:
             return None
@@ -341,6 +429,7 @@ class _BaseJobOffice(JobOffice):
             return 0
 
         while pevent:
+            self._logReadyPipe(pevent)
             pitem = self.toPipelineQueueItem(pevent)
             if pitem:
                 with self.bb.queues:
@@ -349,6 +438,16 @@ class _BaseJobOffice(JobOffice):
             pevent = self.jobReadyEvRcvr.receiveStatusEvent(self.emptyWait)
 
         return out
+
+    def _logReadyPipe(self, pipeevent):
+        try:
+            self._debug("%s: %s on %s is ready",
+                        (pipeevent.getStatus(),
+                         pipeevent.getPropertySet().getString("pipelineName"),
+                         pipeevent.getHostId()))
+        except:
+            self._debug("logging error on " + pipeevent.getStatus())
+            
 
     def toPipelineQueueItem(self, pevent):
         """
@@ -385,12 +484,17 @@ class DataTriggeredJobOffice(_BaseJobOffice):
         out = 0
         dsps = event.getPropertySet().getArrayString("dataset")
         for dsp in dsps:
-            if self.scheduler.processDataset(self.datasetFromProperty(dsp)):
+            ds = self.datasetFromProperty(dsp)
+            self._logDataReady(ds)
+            if self.scheduler.processDataset(ds):
                 out += 1
         return out
 
         # wait until all events are processed
         #   self.scheduler.makeJobsAvailable()
+
+    def _logDataReady(self, dataset):
+        self._debug("Dataset %s is ready", dataset.toString())
 
     def datasetFromProperty(self, policystr):
         """

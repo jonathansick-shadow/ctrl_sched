@@ -124,14 +124,14 @@ class BlackboardTestCase(unittest.TestCase):
     def testAllocateNextJob(self):
 
         # test transfering a job from an empty jobsAvailable queue
-        self.assertRaises(bb.EmptyQueueError, self.bb.allocateNextJob)
+        self.assertRaises(bb.EmptyQueueError, self.bb.allocateNextJob, 333L)
 
         # now test a normal transfer
         with self.bb:
             self.bb.queues.jobsAvailable.append(self._jobItem("v1234"))
             self.bb.queues.jobsAvailable.append(self._jobItem("v1235"))
 
-        self.bb.allocateNextJob()
+        self.bb.allocateNextJob(1982349810931831L)
 
         with self.bb:
             # query queues to confirm transfer
@@ -148,7 +148,7 @@ class BlackboardTestCase(unittest.TestCase):
         self.assert_(not os.path.exists(os.path.join(self.jaq,"v1234.paf")))
 
         # transfer 2nd job
-        self.bb.allocateNextJob()
+        self.bb.allocateNextJob(1982349810931831L)
 
         with self.bb:
             # query queues to confirm transfer

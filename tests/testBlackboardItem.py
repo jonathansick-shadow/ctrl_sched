@@ -11,6 +11,7 @@ import unittest
 import time
 
 import lsst.ctrl.sched.blackboard as bb
+import lsst.ctrl.sched.blackboard.item as bbi
 from lsst.ctrl.sched import Dataset
 from lsst.pex.policy import Policy, PAFWriter
 
@@ -279,17 +280,16 @@ class PipelineItemTestCase(unittest.TestCase):
 
     def testOriginatorEncoding(self):
         #pdb.set_trace()
-        pair = self.pipeline._encodeId(4294967304L)
-        self.assertEquals(pair[0], 0)
-        self.assertEquals(pair[1], 1)
-        self.assertEquals(pair[2], 0)
-        self.assertEquals(pair[3], 8)
-        self.assertEquals(self.pipeline._decodeId(pair), 4294967304L)
+        quad = bbi._encodeId(4294967304L)
+        self.assertEquals(quad[0], 0)
+        self.assertEquals(quad[1], 1)
+        self.assertEquals(quad[2], 0)
+        self.assertEquals(quad[3], 8)
+        self.assertEquals(bbi._decodeId(quad), 4294967304L)
         self.assertEquals(self.pipeline.getOriginator(), 4294967304L)
 
         arb = 736429496730412L
-        self.assertEquals(self.pipeline._decodeId(self.pipeline._encodeId(arb)),
-                          arb)
+        self.assertEquals(bbi._decodeId(bbi._encodeId(arb)), arb)
         
         
 

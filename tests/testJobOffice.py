@@ -51,7 +51,7 @@ class AbstractJobOfficeTestCase(unittest.TestCase):
 
     def testNoRunImpl(self):
         jo = JobOffice(bbdir, fromSubclass=True)
-        self.assertRaises(RuntimeError, jo.run)
+        self.assertRaises(RuntimeError, jo.managePipelines)
 
 
 class DataTriggeredJobOfficeTestCase(unittest.TestCase):
@@ -59,6 +59,7 @@ class DataTriggeredJobOfficeTestCase(unittest.TestCase):
         policy = Policy.createPolicy(policyFile)
         self.joboffice = DataTriggeredJobOffice(testdir, policy=policy,
                                                 brokerHost=brokerhost)
+        self.joboffice.log.setThreshold(self.joboffice.log.WARN)
         self.jodir = os.path.join(testdir, "ccdassembly")
         
     def tearDown(self):
@@ -307,7 +308,7 @@ class DataTriggeredJobOfficeTestCase(unittest.TestCase):
         pevent = StatusEvent("testing", originatorId, ps)
         trxpipe.publishEvent(pevent)
 
-        self.joboffice.run(1)
+        self.joboffice.managePipelines(1)
         
         with self.joboffice.bb.queues:
           self.assertEquals(self.joboffice.bb.queues.pipelinesReady.length(),1)
@@ -332,7 +333,7 @@ class DataTriggeredJobOfficeTestCase(unittest.TestCase):
             ds = copy.deepcopy(ds)
             ds.ids["ampid"] += 1
 
-        self.joboffice.run(1)
+        self.joboffice.managePipelines(1)
         
         with self.joboffice.bb.queues:
           self.assertEquals(self.joboffice.bb.queues.jobsInProgress.length(),1)
@@ -347,7 +348,7 @@ class DataTriggeredJobOfficeTestCase(unittest.TestCase):
         jevent = StatusEvent("testing", originatorId, ps)
         trxpipe.publishEvent(jevent)
 
-        self.joboffice.run(1)
+        self.joboffice.managePipelines(1)
         
         with self.joboffice.bb.queues:
           self.assertEquals(self.joboffice.bb.queues.jobsInProgress.length(),0)
@@ -424,7 +425,7 @@ class DataTriggeredJobOfficeTestCase(unittest.TestCase):
         if self.joboffice.isAlive():
             self.joboffice.join(10.0)
 
-
+            
 
         
         
