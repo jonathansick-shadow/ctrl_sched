@@ -1,5 +1,6 @@
 """
-classes for describing datasets.  
+classes for describing datasets.
+@author Ray Plante
 """
 from __future__ import with_statement
 

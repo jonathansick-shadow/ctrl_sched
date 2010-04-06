@@ -13,8 +13,13 @@ from lsst.pex.policy import Policy, DefaultPolicyFile, PolicyString, PAFWriter
 from lsst.daf.base import PropertySet
 from lsst.pex.logging import Log
 from scheduler import DataTriggeredScheduler
+from lsst.pex.harness.harnessLib import TracingLog
 
 import os, time, threading
+
+VERB2 = -2
+VERB3 = -3
+TRACE = Log.DEBUG
 
 def serializePolicy(policy):
     writer = PAFWriter()
@@ -30,9 +35,17 @@ class JobOffice(_AbstractBase, threading.Thread):
     the progress of running pipelines and sending them jobs as needed.
     """
 
-    def __init__(self, persistDir, logger=None, fromSubclass=False):
+    def __init__(self, persistDir, logger=None, runId=None,
+                 fromSubclass=False):
         """
         create the JobOffice
+        @param persistDir   the directory where the blackboard should be
+                              persisted
+        @param logger       the logger to use.  If not given, the default
+                              will be used.
+        @param runId        the run ID to restrict our attention to.  If
+                              not None, incoming events will be restricted
+                              to the given runId.
         """
         self._checkAbstract(fromSubclass, "JobOffice")
         threading.Thread.__init__(self, name="JobOffice")
@@ -40,6 +53,7 @@ class JobOffice(_AbstractBase, threading.Thread):
 
         self.bb = Blackboard(persistDir)
         self.esys = EventSystem.getDefaultEventSystem()
+        self.runId = runId
         self.brokerHost = None
         self.brokerPort = None
         self.originatorId = self.esys.createOriginatorId()
@@ -51,6 +65,7 @@ class JobOffice(_AbstractBase, threading.Thread):
         self.halt = False
         self.stopTopic = "JobOfficeStop"
         self.stopThread = None
+        self.exc = None
 
     def managePipelines(self, maxIterations=None):
         """
@@ -70,10 +85,14 @@ class JobOffice(_AbstractBase, threading.Thread):
         execute managePipelines in the context of a separate thread.
         """
         self._checkAbstract(self.brokerHost, "JobOffice")
-        self.stopThread = self._StopThread(self, self.stopTopic,
+        self.stopThread = self._StopThread(self, self.stopTopic, self.runId,
                                            self.brokerHost, self.brokerPort)
         self.stopThread.start()
-        self.managePipelines()
+        try:
+            self.log.log(Log.INFO, "starting.")
+            self.managePipelines()
+        except Exception, ex:
+            self.exc = ex
 
     def stop(self):
         """
@@ -83,8 +102,8 @@ class JobOffice(_AbstractBase, threading.Thread):
 
     class _StopThread(threading.Thread):
 
-        def __init__(self, joboffice, stopTopic, brokerHost, brokerPort=None,
-                     waittime=60):
+        def __init__(self, joboffice, stopTopic, runId, brokerHost, 
+                     brokerPort=None, waittime=60):
 
             threading.Thread.__init__(self, name=joboffice.getName()+".stop")
             self.setDaemon(True)
@@ -94,10 +113,14 @@ class JobOffice(_AbstractBase, threading.Thread):
 
             self.log = Log(self.jo.log, "stop")
 
+            selector = ""
+            if runId:  selector = "RUNID='%s'" % runId
+                
             if brokerPort:
-                self.rcvr = EventReceiver(brokerHost, brokerPort, stopTopic)
+                self.rcvr = EventReceiver(brokerHost, brokerPort, stopTopic,
+                                          selector)
             else:
-                self.rcvr = EventReceiver(brokerHost, stopTopic)
+                self.rcvr = EventReceiver(brokerHost, stopTopic, selector)
                 
         def run(self):
             while True:
@@ -108,7 +131,8 @@ class JobOffice(_AbstractBase, threading.Thread):
                     self.jo.stop()
                 if self.jo.halt:
                     return
-            
+
+    classLookup = { }
 
 class _BaseJobOffice(JobOffice):
     """
@@ -116,22 +140,26 @@ class _BaseJobOffice(JobOffice):
     policy-configured behavior.  
     """
 
-    def __init__(self, rootdir, log=None, policy=None, defPolicyFile=None,
-                 brokerHost=None, brokerPort=None, fromSubclass=False):
+    def __init__(self, rootdir, policy=None, defPolicyFile=None, log=None, 
+                 runId=None, brokerHost=None, brokerPort=None,
+                 fromSubclass=False):
         """
         create the JobOffice
         @param rootdir        the root directory where job offices may set up
                                  its blackboard data.  This JobOffice will
                                  create a subdirectory here for its data with
                                  a name set by the "name" policy paramter.
-        @param log            a logger to use; if None, the default logger will
-                                 will be used.  A child log will be created.
         @param policy         the policy to use to configure this JobOffice
         @param defPolicyFile  the DefaultPolicyFile to use for defaults.  If
                                  this points to a dictionary, a policy
                                  validation will be done.  If None, an
                                  internally identified default policy file
                                  will be used.
+        @param log            a logger to use; if None, the default logger will
+                                 will be used.  A child log will be created.
+        @param runId          the run ID to restrict our attention to.  If
+                                 not None, incoming events will be restricted
+                                 to the given runId.
         @param brokerHost     the machine where the event broker is running.
                                  If None (default), the host given in the
                                  policy is used.  This parameter is for
@@ -167,7 +195,9 @@ class _BaseJobOffice(JobOffice):
         self.name = self.policy.get("name")
         persistDir = self.policy.get("persist.dir") % {"schedroot": rootdir, 
                                                        "name": self.name    }
-        JobOffice.__init__(self, persistDir, log, True)
+        if not os.path.exists(persistDir):
+            os.makedirs(persistDir)
+        JobOffice.__init__(self, persistDir, log, runId, True)
         self.setName(self.name)
 
         # logger
@@ -187,17 +217,24 @@ class _BaseJobOffice(JobOffice):
             self.brokerport = self.policy.get("listen.brokerHostPort")
         if not self.brokerHost and (not self.brokerPort or self.brokerPort > 0):
             self.brokerHost = self.policy.get("listen.brokerHostName")
+
+        select = ""
+        if runId:
+            select = "RUNID='%s'" % runId
+            
         if self.brokerPort is None:
             self.dataEvRcvrs = []
             for topic in self.dataTopics:
-                self.dataEvRcvrs.append(EventReceiver(self.brokerHost, topic))
+                self.dataEvRcvrs.append(EventReceiver(self.brokerHost, topic,
+                                                      select))
+            if select:  select += " and "
             self.jobReadyEvRcvr = EventReceiver(self.brokerHost, self.jobTopic,
-                                                "STATUS='job:ready'")
+                                                select+"STATUS='job:ready'")
             self.jobDoneEvRcvr = EventReceiver(self.brokerHost, self.jobTopic,
-                                               "STATUS='job:done'")
+                                               select+"STATUS='job:done'")
             self.jobAcceptedEvRcvr = EventReceiver(self.brokerHost,
                                                    self.jobTopic,
-                                                   "STATUS='job:accepted'")
+                                               select+"STATUS='job:accepted'")
             self.jobAssignEvTrx = EventTransmitter(self.brokerHost,
                                                    self.jobTopic)
                                                    
@@ -206,19 +243,20 @@ class _BaseJobOffice(JobOffice):
             for topic in self.dataTopics:
                 self.dataEvRcvrs.append(EventReceiver(self.brokerHost,
                                                       self.brokerPort,
-                                                      topic))
+                                                      topic, select))
+            if select:  select += " and "
             self.jobReadyEvRcvr = EventReceiver(self.brokerHost,
                                                 self.brokerPort,
                                                 jobTopic,
-                                                "STATUS='job:ready'")
+                                                select+"STATUS='job:ready'")
             self.jobDoneEvRcvr = EventReceiver(self.brokerHost,
                                                self.brokerPort,
                                                jobTopic,
-                                               "STATUS='job:done'")
+                                               select+"STATUS='job:done'")
             self.jobAcceptedEvRcvr = EventReceiver(self.brokerHost,
                                                    self.brokerPort,
                                                    jobTopic,
-                                                   "STATUS='job:accepted'")
+                                                select+"STATUS='job:accepted'")
             self.jobAssignEvTrx = EventTransmitter(self.brokerHost,
                                                    self.brokerPort,
                                                    self.jobTopic)
@@ -242,6 +280,8 @@ class _BaseJobOffice(JobOffice):
                 self.halt = False
                 self.log.log(Log.INFO, "Stop requested; shutting down.")
                 return
+
+            trace = self._trace("loop", VERB3)
             
             # listen for completed Jobs
             self.processDoneJobs()
@@ -258,17 +298,21 @@ class _BaseJobOffice(JobOffice):
             if maxIterations is not None:
                 i += 1
 
+            trace.done()
+
     def processDoneJobs(self):
         """
         listen for done events from pipelines in progress and update
         their state in the blackboard.
         @return int   the number of jobs found to be done
         """
+        trace = self._trace("processDoneJobs")
         out = 0
         constraint = "status='job:done'",
         jevent = self.jobDoneEvRcvr.receiveStatusEvent(self.initialWait)
             
         if not jevent:
+            trace.done()
             return 0
 
         while jevent:
@@ -277,6 +321,7 @@ class _BaseJobOffice(JobOffice):
                 out += 1
             jevent = self.jobDoneEvRcvr.receiveStatusEvent(self.emptyWait)
 
+        trace.done()
         return out
 
     def _logJobDone(self, jobevent):
@@ -291,17 +336,21 @@ class _BaseJobOffice(JobOffice):
             self._debug("logging error on " + jobevent.getStatus())
 
     def _debug(self, msg, data=None):
-        if data is None:
-            self.log.log(Log.DEBUG, msg)
-        else:
-            self.log.log(Log.DEBUG, msg % data)
-            
-    def _log(self, msg, data=()):
-        if data is None:
-            self.log.log(Log.INFO, msg)
-        else:
-            self.log.log(Log.INFO, msg % data)
+        self._log(VERB2, msg, data)
+    def _inform(self, msg, data=None):
+        self._log(Log.INFO, msg, data)
 
+    def _log(self, level, msg, data=None):
+        if data is None:
+            self.log.log(level, msg)
+        else:
+            self.log.log(level, msg % data)
+
+    def _trace(self, where, lev=TRACE):
+        out = TracingLog(self.log, where, lev)
+        out.start()
+        return out
+            
     def processJobDoneEvent(self, jevent):
         """
         process a job-done event.  If the event matches a job in the 
@@ -332,9 +381,11 @@ class _BaseJobOffice(JobOffice):
         receive and process all data events currently available.
         @return int   the number of events processed
         """
+        trace = self._trace("processDataEvents")
         out = 0
         devent = self.receiveAnyDataEvent(self.initialWait)
         if not devent:
+            trace.done()
             return 0
 
         while devent:
@@ -343,6 +394,7 @@ class _BaseJobOffice(JobOffice):
                 out += 1
             devent = self.receiveAnyDataEvent(self.emptyWait)
 
+        trace.done()
         return out
 
     def _logDataEvent(self, dataevent):
@@ -385,6 +437,7 @@ class _BaseJobOffice(JobOffice):
         """
         listen for pipelines ready to run and give them jobs to do
         """
+        trace = self._trace("allocateJobs")
         self.receiveReadyPipelines()
 
         out = 0
@@ -403,9 +456,10 @@ class _BaseJobOffice(JobOffice):
                     self.bb.allocateNextJob(pipe.getOriginator())
                     out += 1
 
+        trace.done()
         return out
 
-    def makeJobCommandEvent(self, job, pipeline, runid=""):
+    def makeJobCommandEvent(self, job, pipeline, runId=""):
         """
         create a CommandEvent to send to a pipeline instructing it to
         commence working on the given job.
@@ -415,7 +469,7 @@ class _BaseJobOffice(JobOffice):
             props.add("dataset", serializePolicy(ds.toPolicy()))
         props.set("STATUS", "job:process")
         props.set("name", job.getName())
-        return CommandEvent(runid, self.originatorId, pipeline, props)
+        return CommandEvent(runId, self.originatorId, pipeline, props)
         
 
     def receiveReadyPipelines(self):
@@ -423,9 +477,11 @@ class _BaseJobOffice(JobOffice):
         listen for pipelines ready to run and add them to the pipelinesReady
         queue
         """
+        trace = self._trace("receiveReadyPipelines")
         out = 0
         pevent = self.jobReadyEvRcvr.receiveStatusEvent(self.initialWait)
         if not pevent:
+            trace.done()
             return 0
 
         while pevent:
@@ -437,6 +493,7 @@ class _BaseJobOffice(JobOffice):
                 out += 1
             pevent = self.jobReadyEvRcvr.receiveStatusEvent(self.emptyWait)
 
+        trace.done()
         return out
 
     def _logReadyPipe(self, pipeevent):
@@ -461,12 +518,39 @@ class DataTriggeredJobOffice(_BaseJobOffice):
     of data in the configuring policy file.  
     """
     
-    def __init__(self, rootdir, log=None, policy=None, brokerHost=None,
-                 brokerPort=None):
+    def __init__(self, rootdir, policy=None, log=None, runId=None, 
+                 brokerHost=None, brokerPort=None):
+        """
+        create a JobOffice that is triggered by the appearence of data
+        that matched filters specified in the policy file.
+        @param rootdir        the root directory where job offices may set up
+                                 its blackboard data.  This JobOffice will
+                                 create a subdirectory here for its data with
+                                 a name set by the "name" policy paramter.
+        @param policy         the policy to use to configure this JobOffice
+        @param defPolicyFile  the DefaultPolicyFile to use for defaults.  If
+                                 this points to a dictionary, a policy
+                                 validation will be done.  If None, an
+                                 internally identified default policy file
+                                 will be used.
+        @param log            a logger to use; if None, the default logger will
+                                 will be used.  A child log will be created.
+        @param runId          the run ID to restrict our attention to.  If
+                                 not None, incoming events will be restricted
+                                 to the given runId.
+        @param brokerHost     the machine where the event broker is running.
+                                 If None (default), the host given in the
+                                 policy is used.  This parameter is for
+                                 carrying an override from the command line.
+        @param brokerHost     the port to use to connect to the event broker.
+                                 If None (default), the port given in the
+                                 policy is used.  This parameter is for
+                                 carrying an override from the command line.
+        """
         dpolf = DefaultPolicyFile("ctrl_sched",
                                   "DataTriggeredJobOffice_dict.paf",
                                   "policies")
-        _BaseJobOffice.__init__(self, rootdir, log, policy, dpolf,
+        _BaseJobOffice.__init__(self, rootdir, policy, dpolf, log, runId, 
                                 brokerHost, brokerPort, True)
 
         # create a scheduler based on "schedule.className"
@@ -525,6 +609,12 @@ class DataTriggeredJobOffice(_BaseJobOffice):
         
 
     def findAvailableJobs(self):
+        trace = self._trace("findAvailableJobs")
         self.scheduler.makeJobsAvailable()
+        trace.done()
 
+JobOffice.classLookup["DataTriggered"] = DataTriggeredJobOffice
+JobOffice.classLookup["DataTriggeredJobOffice"] = DataTriggeredJobOffice
     
+__all__ = "JobOffice DataTriggeredJobOffice".split()
+
