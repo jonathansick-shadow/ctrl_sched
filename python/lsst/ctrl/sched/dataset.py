@@ -5,7 +5,6 @@ classes for describing datasets.
 from __future__ import with_statement
 
 from lsst.pex.policy import Policy
-from base import _AbstractBase
 
 import os
 

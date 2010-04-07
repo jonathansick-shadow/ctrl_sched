@@ -13,6 +13,7 @@ from lsst.pex.policy import Policy, DefaultPolicyFile, PolicyString, PAFWriter
 from lsst.daf.base import PropertySet
 from lsst.pex.logging import Log
 from scheduler import DataTriggeredScheduler
+from lsst.ctrl.sched.utils import serializePolicy, unserializePolicy
 from lsst.pex.harness.harnessLib import TracingLog
 
 import os, time, threading
@@ -20,14 +21,6 @@ import os, time, threading
 VERB2 = -2
 VERB3 = -3
 TRACE = Log.DEBUG
-
-def serializePolicy(policy):
-    writer = PAFWriter()
-    writer.write(policy)
-    return writer.toString()
-
-def unserializePolicy(policystr):
-    return Policy.createPolicy(PolicyString(policystr))
 
 class JobOffice(_AbstractBase, threading.Thread):
     """
@@ -308,7 +301,6 @@ class _BaseJobOffice(JobOffice):
         """
         trace = self._trace("processDoneJobs")
         out = 0
-        constraint = "status='job:done'",
         jevent = self.jobDoneEvRcvr.receiveStatusEvent(self.initialWait)
             
         if not jevent:
