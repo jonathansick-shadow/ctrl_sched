@@ -44,6 +44,26 @@ class Dataset(object):
             for key in kw.keys():
                 self.ids[key] = kw[key]
 
+    def __eq__(self, other):
+        """
+        return True if the given Dataset describes the same data as this
+        one.  
+        """
+        if not isinstance(other, Dataset):
+            return False
+        if other.type != self.type:
+            return False
+        if len(filter(lambda d: d.ids is None, [self, other])) == 1:
+            return False
+        
+        keys = other.ids.keys()
+        if len(keys) != len(self.ids):
+            return False
+        for key in keys:
+            if not self.ids.has_key(key) or other.ids[key] != self.ids[key]:
+                return False
+        return True
+
     def toString(self, usePath=True):
         """
         return a string form if this dataset's contents

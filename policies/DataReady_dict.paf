@@ -1,0 +1,92 @@
+#<?cfg paf dictionary ?>
+#
+target: DataReadyStage
+
+# description:  "data for configuring the stage that announces the 
+#                availability of data to interested JobOffices"
+
+definitions: {
+   datasets:  {
+      type:  policy
+      description:  "configuration for issuing events of a particular 
+                     dataset type.  When multiple entries appear, each 
+                     should have a different datasetType parameter set.
+                     (and presumably a different dataReadyEvent).  When
+                     datasetType is not specified, it is taken to mean 
+                     all dataset types.  An entry without a datasetType
+                     will effectively short-circuit all subsequent entries."
+      minOccurs:  1
+      maxOccurs:  -1
+      dictionary:  {
+        definitions: {
+           datasetType: {
+              type: string
+              description:  "the dataset type to restrict alerts to on the 
+                             specified dataReadyEvent topic.  If not given,
+                             this datasets entry will apply to all dataset
+                             types."
+              minOccurs:  0
+              maxOccurs:  1
+           }
+
+           dataReadyEvent:  {
+              type:  string
+              description:  "the event topic name to use for communicating
+                             with the JobOffice"
+              minOccurs:  1
+              maxOccurs:  1
+           }
+
+           reportAllPossible:  {
+              type:  bool
+              description:  "if False, the data ready event will only be issued
+                             for those datasets that have thus far been 
+                             persisted (as given in the completeDatasets list).
+                             Otherwise, all possible datasets will be reported;
+                             those that have not been persisted will be marked 
+                             invalid."
+              minOccurs:  0
+              maxOccurs:  1
+              default:  True
+           }
+
+        }
+      }
+   }
+
+   outputKeys:  {
+      type:  policy
+      description:  "a mapping of logical names to clipboard keys for
+                     data that this stage will put on the clipboard.
+                     the parameter name is the name that the stage
+                     uses identify the data; the value is the name 
+                     that will be used on the clipboard."
+      minOccurs:  1
+      maxOccurs:  1
+      dictionary:  {
+         definitions:  {
+            completedDatasets: {
+               type:  string
+               description:  "the name for the list of datasets that have 
+                              been successfully persisted.  They will
+                              appear as Dataset instances."
+               minOccurs: 0
+               maxOccurs: 0
+               default:   outputDatasets
+            }
+
+            possibleDatasets: {
+               type:  string
+               description:  "the name for the complete list of output 
+                              datasets that the pipeline is expected to 
+                              alert JobOffices about.  They will
+                              appear as Dataset instances."
+               minOccurs: 0
+               maxOccurs: 0
+               default:   targetDatasets
+            }
+         }
+      }
+   }
+}
+

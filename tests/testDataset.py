@@ -114,6 +114,44 @@ class DatasetTestCase(unittest.TestCase):
         self.assertEquals(ds.ids["ccdid"], ccdid)
         self.assertEquals(ds.ids["visitid"], visitid)
 
+    def testEquals(self):
+        type = "CalExp"
+        path = "goob/CalExp-v88-c12.fits"
+        ccdid = 12
+        visitid = 88
+
+        ds1 = Dataset(type, path, ccdid=ccdid, visitid=visitid)
+        ds2 = Dataset(type, path, ccdid=ccdid, visitid=visitid)
+        self.assert_(ds1 == ds2)
+        self.assertEquals(ds1, ds2)
+        self.assertEquals(ds2, ds1)
+        self.assert_(ds1 in [ds2])
+
+        ds2.ids["ccdid"] += 1
+        self.assertNotEquals(ds1, ds2)
+        self.assertNotEquals(ds2, ds1)
+        self.assert_(ds1 not in [ds2])
+
+        ds2 = Dataset(type, path, ccdid=ccdid, visitid=visitid, ampid=5)
+        self.assertNotEquals(ds1, ds2)
+        self.assertNotEquals(ds2, ds1)
+        
+        ds2 = Dataset("junk", path, ccdid=ccdid, visitid=visitid)
+        self.assertNotEquals(ds1, ds2)
+        self.assertNotEquals(ds2, ds1)
+
+        ds2 = Dataset(type)
+        self.assertNotEquals(ds1, ds2)
+        self.assertNotEquals(ds2, ds1)
+        
+        ds2 = Dataset(None, ccdid=ccdid, visitid=visitid)
+        self.assertNotEquals(ds1, ds2)
+        self.assertNotEquals(ds2, ds1)
+        ds1 = Dataset(None, ccdid=ccdid, visitid=visitid)
+        self.assertEquals(ds1, ds2)
+        self.assertEquals(ds2, ds1)
+        
+
 
 __all__ = "DatasetTestCase".split()
 

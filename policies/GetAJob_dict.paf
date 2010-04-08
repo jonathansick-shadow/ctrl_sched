@@ -2,8 +2,8 @@
 #
 target: getAJobStage
 
-# description:  "Configuration data for scheduling jobs based on
-#                available datasets"
+# description:  "data for configuring the stage that accepts a processing 
+#                assignment from the JobOffice"
 
 definitions: {
    pipelineEvent:  {
@@ -53,6 +53,16 @@ definitions: {
                minOccurs: 0
                maxOccurs: 0
                default:   targetDatasets
+            }
+
+            completedDatasets: {
+               type:  string
+               description:  "the name for the list of datasets that have 
+                              been successfully persisted.  They will
+                              appear as Dataset instances."
+               minOccurs: 0
+               maxOccurs: 0
+               default:   outputDatasets
             }
          }
       }

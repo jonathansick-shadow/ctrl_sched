@@ -103,31 +103,69 @@ class DataReadyClient(JobOfficeClient):
     @see DataReadyStage
     """
 
-    def __init__(self, runId, pipelineName, topic, brokerHost,
-                 brokerPort=None):
+    def __init__(self, runId, pipelineName, topic, brokerHost, 
+                 datasetType=None, reportAllPossible=True, brokerPort=None):
         """
         create the client
         @param runId         the Run ID for the pipeline
         @param pipelineName  the logical name of the pipeline
         @param topic         the topic to be used to communicate with
                                  the JobOffice
+        @param brokerHost    the host where the event broker is running
+        @param datasetType   the dataset type to restrict notifications to.
+                                 If None, all types will be handled.
+        @param reportAllPossible  if False, the data ready event will only 
+                             be issued for those datasets that have thus
+                             far been completed.
         """
         JobOfficeClient.__init__(self, runId, pipelineName, brokerHost,
                                  brokerPort=brokerPort)
 
+        self.datasetType = datasetType
+        self.reportAllPossible = reportAllPossible
+        
         self.dataSender = utils.EventSender(self.runid, topic, brokerHost,
                                             brokerPort)
 
 
-    def tellDataReady(self, datasets, success=False):
+    def tellDataReady(self, possible, completed=None, defSuccess=False):
         """
         alert JobOffices that one or more datasets are ready.
-        @param datasets    a single or list of dataset objects
-        @param success     True if all of the datasets were successfully
-                              created.
+        @param possible    a single or list of possible datasets to announce
+        @param completed   the list of datasets that have actually been
+                           successfully created.
+        @param defSuccess  the default validity flag to set if the possible
+                             dataset is not among the completed ones.
+        @return list of Datasets:  the datasets that were not announced
         """
-        return self.dataSender.send(
-            self.sender.createDatasetEvent(self.name, datasets, success))
+        if not isinstance(possible, list):
+            possible = [possible]
+        if completed is None:
+            completed = []
+        elif not isinstance(completed, list):
+            completed = [completed]
+
+        remain = []
+        report = []
+        fullsuccess = True
+        while len(possible) > 0:
+            ds = possible.pop(0)
+            if self.datasetType and self.datasetType != ds.type:
+                # only notify on the dataset type of interest
+                remain.append(ds)
+                continue
+            
+            ds.valid = ds in completed
+            if self.reportAllPossible and not ds.valid:
+                fullsuccess = False
+            if self.reportAllPossible or ds.valid:
+                report.append(ds)
+            else:
+                remain.append(ds)
+        
+        self.dataSender.send(
+            self.sender.createDatasetEvent(self.name, report, fullsuccess))
+        return remain
 
 
 class JobDoneClient(DataReadyClient):
@@ -220,8 +258,8 @@ class GetAJobSerialProcessing(harnessStage.SerialProcessing, _GetAJobComp)
 
 class _DataReadyComp(object):
 
-    def setup(self):
-        deffile = DefaultPolicyFile("ctrl_sched","DataReady_dict.paf","policies")
+    def setup(self, policyDict="DataReady_dict.paf"):
+        deffile = DefaultPolicyFile("ctrl_sched", policyDict, "policies")
         defpol = Policy.createPolicy(deffile, deffile.getRepositoryPath())
 
         if not hasattr(self,"policy") or self.policy:
@@ -233,11 +271,68 @@ class _DataReadyComp(object):
 #            raise RuntimeError("Stage %s: Unsupported mode: %s" %
 #                               (self.getName(), self.mode))
 
-        topic = self.policy.getString("dataReadyEvent")
-        self.client = DataReadyClient(self.getRun(), self.getName(), topic,
-                                      self.getEventBrokerHost())
+        self.clipboardKeys = {}
+        self.clipboardKeys["completedDatasets"] = \
+           self.policy.getString("outputKeys.completedDatasets")
+        self.clipboardKeys["possibleDatasets"] = \
+           self.policy.getString("outputKeys.possibleDatasets")
+
+        self.dataclients = []
+        clpols = self.policy.getPolicyArray("datasets")
+        for pol in clpols:
+            dstype = None
+            if pol.exists("datasetType"):
+                dstype = pol.getString("datasetType")
+            topic = pol.getString("dataReadyEvent")
+            reportAll = pol.getBool("reportAllPossible")
+            client = DataReadyClient(self.getRun(), self.getName(), topic,
+                                     self.getEventBrokerHost(), dstype,
+                                     reportAll)
+            self.dataclients.append(client)
         
-   def tellAllReady(self, success=None):
+
+   def tellDataReady(self, clipboard):
        """
-       send an event reporting on the output datasets that have 
+       send an event reporting on the output datasets that have been
+       attempted by this pipeline.
+       @param clipboard     the pipeline clipboard containing the output
+                              datasets
        """
+       completed = clipboard.get(self.clipboardKeys["completedDatasets"])
+       possible = clipboard.get(self.clipboardKeys["possibleDatasets"])
+
+       for client in self.dataclients:
+           if len(possible) < 1:
+               break
+           possible = client.tellDataReady(possible, completed)
+
+       # update the possible list for the ones we have not reported
+       # on yet.
+       clipboard.set(self.clipboardKeys["possibleDatasets"], possible)
+       
+
+class DataReadyParallelProcessing(harnessStage.ParallelProcessing, _DataReadyComp)
+    """
+    Stage implementation that reports on newly available datasets via the
+    Slice threads.
+    """
+    def process(self, clipboard):
+        """
+        examine the clipboard for the list of persisted datasets and
+        announce their availability to JobOffices via an event.
+        """
+        self.tellDataReady(clipboard)
+
+class DataReadySerialProcessing(harnessStage.SerialProcessing, _DataReadyComp)
+    """
+    Stage implementation that reports on newly available datasets via the
+    master Pipeline thread.
+    """
+    def preprocess(self, clipboard):
+        """
+        examine the clipboard for the list of persisted datasets and
+        announce their availability to JobOffices via an event.
+        """
+        self.tellDataReady(clipboard)
+
+

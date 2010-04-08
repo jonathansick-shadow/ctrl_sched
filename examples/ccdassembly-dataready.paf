@@ -1,0 +1,20 @@
+# events will be issued in the order of datasets items 
+datasets: {
+   dataReadyEvent:  CcdAssemblyJob
+
+   # restrict ourselves to datasets of this type; if not given, all
+   # types will be reported
+   #
+   datasetType:  PostISR-CCD
+
+   # reportAllPossible:  True
+}
+
+outputKeys: {
+    # completedDatasets: outputDatasets
+    # possibleDatasets:  targetDatasets
+}
+
+
+
+    
