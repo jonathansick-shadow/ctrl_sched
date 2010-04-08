@@ -457,8 +457,11 @@ class _BaseJobOffice(JobOffice):
         commence working on the given job.
         """
         props = PropertySet()
-        for ds in job.getDatasets():
-            props.add("dataset", serializePolicy(ds.toPolicy()))
+        for ds in job.getInputDatasets():
+            props.add("input", serializePolicy(ds.toPolicy()))
+        for ds in job.getOutputDatasets():
+            props.add("output", serializePolicy(ds.toPolicy()))
+        props.set("identity", serializePolicy(job.getJobIdentity().toPolicy()))
         props.set("STATUS", "job:process")
         props.set("name", job.getName())
         return CommandEvent(runId, self.originatorId, pipeline, props)

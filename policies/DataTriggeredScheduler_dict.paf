@@ -36,50 +36,119 @@ definitions: {
       minOccurs:    1
    }
 
-   jobDataset: {
+   job : {
       type:  policy
-      description:  "a parameterized description of a set of datasets that 
-                     must be provided as input to a job."
-      minOccurs:    0
-   }
-
-   jobName: {
-      type:  policy
-      description:  "parameters for creating a job name"
+      description:  "a parameterized description of the contents that
+                     will go into a job description"
       minOccurs:    1
-      dictionary: {
-         definitions: {
-             default: {
-                 type:  "string"
-                 description:  "a default base name for forming a jobname.
-                                If a template is not provided or applicable,
-                                the name will be of the form 'default-#',
-                                where # is an incremented number."
-                 minOccurs: 0
-                 minOccurs: 1
-                 default:  "Job"
+      dictionary:  {
+        definitions: {
+          input: {
+             type:  policy
+             description:  "a parameterized description of a set of datasets 
+                            that must be provided as input to a job."
+             minOccurs:    0
+          }
+
+          output: {
+             type:  policy
+             description:  "a parameterized description of a set of datasets 
+                            that must be provided as input to a job."
+             minOccurs:    0
+          }
+
+          identity: {
+             type: policy
+             description: "a set of data that is meant to uniquely identify
+                           this job with a unique set of outputs.  If a 
+                           a description is not provided, the first output
+                           dataset will serve as the identifier for this 
+                           job."
+             minOccurs:   0
+             maxOccurs:   1
+             dictionary: {
+                definitions: {
+                   templateType: {
+                      type:  string
+                      description: "The dataset type of a dataset to find 
+                                    to serve as the source of identity ids.
+                                    First the output datasets will be searched
+                                    and then the input datasets.  The first 
+                                    one found will be the template.  If not
+                                    given, the first output dataset will be
+                                    the template"
+                      minOccurs: 0
+                      maxOccurs: 1
+                   }
+                   type: {
+                      type:  string 
+                      description: "A name reflecting the type of processing
+                                    to be carried out by this job.  Typically,
+                                    this is the name the main output dataset 
+                                    produced by this job.  If not provided,
+                                    the type will be not included as part of 
+                                    the job identity."
+                      minOccurs: 0
+                      minOccurs: 1
+                   }
+                   id: {
+                      type:  string
+                      description: "A name of of an identifier from the 
+                                    template dataset that will be included 
+                                    in the job identity."
+                      minOccurs: 0
+                      maxOccurs: -1
+                   }
+                }
              }
-             initCounter: {
-                 type:  int
-                 description:  "the initial number to use when forming the 
-                                first name using the default base"
-                 minOccurs: 0
-                 minOccurs: 1
-                 default:   1
+          }
+
+          name: {
+             type:  policy
+             description:  "parameters for creating a job name"
+             minOccurs:    1
+             dictionary: {
+                definitions: {
+                    default: {
+                        type:  "string"
+                        description:  "a default base name for forming a 
+                                       jobname.  If a template is not provided 
+                                       or applicable, the name will be of the 
+                                       form 'default-#', where # is an 
+                                       incremented number."
+                        minOccurs: 0
+                        minOccurs: 1
+                        default:  "Job"
+                    }
+                    initCounter: {
+                        type:  int
+                        description:  "the initial number to use when forming 
+                                       the first name using the default base"
+                        minOccurs: 0
+                        minOccurs: 1
+                        default:   1
+                    }
+                    template: {
+                        type:  string
+                        description:  "a python template string for forming the 
+                                       name.  The substitution markers (%...) 
+                                       should use the form, %(name)f, where 
+                                       name is either 'type' or a dataset 
+                                       identifier name.  If not provided, the 
+                                       default base will be used.  The name
+                                       will be formed from the job identity
+                                       information."
+                        minOccurs: 0
+                        maxOccurs: 1
+                    }
+                }
              }
-             template: {
-                 type:  string
-                 description:  "a python template string for forming the name.
-                                The substitution markers (%...) should use the
-                                form, %(name)f, where name is either 'type' or
-                                a dataset identifier name.  If not provided,
-                                the default base will be used."
-                 minOccurs: 0
-                 maxOccurs: 1
-             }
-         }
+          }
+        }
       }
    }
+
+   
 
 
 }

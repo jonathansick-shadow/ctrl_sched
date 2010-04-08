@@ -70,7 +70,7 @@ class DataTriggeredSchedulerTestCase(unittest.TestCase):
         policy = Policy.createPolicy(os.path.join(exampledir,
                                                   "ccdassembly-joboffice.paf"))
         spolicy = policy.getPolicy("schedule")
-        spolicy.set("jobName.template", "%(type)s-v%(ampid)s")
+        spolicy.set("job.name.template", "%(type)s-v%(ampid)s")
         sched = DataTriggeredScheduler(self.bb, spolicy)
         
         ds = Dataset("PostISR", ampid=3)
@@ -107,7 +107,7 @@ class DataTriggeredSchedulerTestCase(unittest.TestCase):
             job = self.bb.queues.jobsPossible.get(1)
             self.assertEquals(job.getName(), "Job-2")
             self.assertEquals(job.triggerHandler.getNeededDatasetCount(), 15)
-            inputs = job.getDatasets()
+            inputs = job.getInputDatasets()
             self.assertEquals(len(inputs), 16)
             self.assertEquals(inputs[0].type, "PostISR")
             self.assertEquals(self.sched.nameNumber, 3)

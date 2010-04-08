@@ -89,12 +89,21 @@ class DataTriggeredScheduler(Scheduler):
             self.triggers.append(Trigger.fromPolicy(trigp))
 
         self.inputdata = []
-        inpps = policy.getArray("jobDataset")
+        inpps = policy.getArray("job.input")
         for dsp in inpps:
             self.inputdata.append(Trigger.fromPolicy(dsp))
 
+        self.outputdata = []
+        outpps = policy.getArray("job.output")
+        for dsp in outpps:
+            self.outputdata.append(Trigger.fromPolicy(dsp))
+
+        self.jobIdConf = None
+        if policy.exists("job.identity"):
+            self.jobIdConf = policy.getPolicy("job.identity")
+
         self.nametmpl = None
-        pol = policy.get("jobName")
+        pol = policy.get("job.name")
         self.defaultName = pol.getString("default")
         if pol.exists("template"):
             self.nametmpl = pol.getString("template")
@@ -146,17 +155,58 @@ class DataTriggeredScheduler(Scheduler):
             # if not needed by any current possible jobs, create
             # a new job and put it on the jobsPossible queue
             if not needed:
-                name = self.createName(recognized)
                 inputs = []
                 for filt in self.inputdata:
                     inputs.extend(filt.listDatasets(recognized))
+                outputs = []
+                for filt in self.outputdata:
+                    outputs.extend(filt.listDatasets(recognized))
 
                 trighdlr = \
                       FilesetTriggerHandler(trigger.listDatasets(recognized))
+
+                jobds = self._determineJobIdentity(outputs, inputs)
+                name = self.createName(jobds)
                 
-                job = JobItem.createItem(name, inputs, trighdlr)
+                job = JobItem.createItem(jobds, name, inputs,outputs, trighdlr)
                 job.setNeededDataset(recognized)
                 self.bb.queues.jobsPossible.append(job)
+
+    def _determineJobIdentity(self, outputs, inputs=None):
+        # determine the job identity
+        if inputs is None:  inputs = []
+        
+        if self.jobIdConf:
+            # determine our template dataset for our identity
+            template = None
+            if self.jobIdConf.exists("templateType"):
+                # find first dataset (in output, then input) matching
+                # this dataset type.
+                type = self.jobIdConf.getString("templateType")
+                selecttype = lambda d: d.type == type
+                template = filter(selecttype, outputs)
+                if len(template) == 0: template = filter(selecttype, inputs)
+                if len(template) > 0: template = template[0]
+            if not template:
+                # default to the first output (then input) dataset
+                template = len(output > 0) and outputs[0] or inputs[0]
+
+            out = Dataset(template.type)
+            if self.jobIdConf.exists("type"):
+                out.type = self.jobIdConf.getString("type")
+            if self.jobIdConf.exists("id"):
+                for id in self.jobIdConf.getStringArray("id"):
+                    out.ids[id] = template.ids[id]
+
+            # the identity dataset is complete
+            return out
+
+        elif len(outputs) > 0:
+            return outputs[0]
+        elif len(inputs) > 0:
+            return inputs[0]
+        else:
+            return Dataset("unknown")
 
     def createName(self, dataset):
         """

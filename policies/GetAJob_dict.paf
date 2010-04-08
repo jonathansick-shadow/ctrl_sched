@@ -1,0 +1,61 @@
+#<?cfg paf dictionary ?>
+#
+target: getAJobStage
+
+# description:  "Configuration data for scheduling jobs based on
+#                available datasets"
+
+definitions: {
+   pipelineEvent:  {
+      type:  string
+      description:  "the event topic name to use for communicating
+                     with the JobOffice"
+      minOccurs:  1
+      maxOccurs:  1
+   }
+
+   outputKeys:  {
+      type:  policy
+      description:  "a mapping of logical names to clipboard keys for
+                     data that this stage will put on the clipboard.
+                     the parameter name is the name that the stage
+                     uses identify the data; the value is the name 
+                     that will be used on the clipboard."
+      minOccurs:  1
+      maxOccurs:  1
+      dictionary:  {
+         definitions:  {
+            jobIdentity: {
+               type:  string
+               description:  "the name for the Job Identity data,
+                              which will appear on the clipboard as a 
+                              dictionary of identifier name-value pairs."
+               minOccurs: 0
+               maxOccurs: 0
+               default:   jobIdentity
+            }
+
+            inputDatasets: {
+               type:  string
+               description:  "the name for the list of input datasets that
+                              should be processed by this stage.  They will
+                              appear as Dataset instances."
+               minOccurs: 0
+               maxOccurs: 0
+               default:   inputDatasets
+            }
+
+            outputDatasets: {
+               type:  string
+               description:  "the name for the list of output datasets that
+                              should be processed by this stage.  They will
+                              appear as Dataset instances."
+               minOccurs: 0
+               maxOccurs: 0
+               default:   targetDatasets
+            }
+         }
+      }
+   }
+}
+

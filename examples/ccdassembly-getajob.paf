@@ -1,22 +1,11 @@
 pipelineEvent:  CcdAssemblyJob
 
-# visitIdentityKey: visitIdentity
-
-visitIdentity: {
-    # key:  visitIdentity
-
-    # the values of these items will posted as python dictionary on 
-    # the clipboard; the name for the dictionary is given by 
-    # "key"
-
-    # the dataset type that nominally identifies this visit
-    datasetType:  PostISR-CCD  
-
-    id: visit
-    id: ccd
-    id: snap
-    id: filter
+outputKeys: {
+    # jobIdentity: jobIdentity
+    # inputDatasets: inputDatasets
+    # outputDatasets:  targetDatasets
 }
+
 
 
     

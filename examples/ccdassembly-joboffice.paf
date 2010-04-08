@@ -33,7 +33,8 @@ schedule: {
     #
     # a job will list 16 PostISR datasets with the given type and identifiers
     # as attributes.  The ampid will range 0-15.  
-    jobDataset: {
+    job: {
+      input: {
         datasetType:  PostISR
         id: {
           name:  visitid
@@ -45,9 +46,24 @@ schedule: {
           name:  ampid
           min: 0
           lim: 16
+        }
         id: {
           name:  snapid
         }
+      }
+
+      output: {
+        datasetType:  PostISR-CCD
+        id: {
+          name:  visitid
+        }
+        id: {
+          name:  ccdid
+        }
+        id: {
+          name:  snapid
+        }
+      }
     }
 }
 

@@ -448,46 +448,68 @@ class JobItem(BasicBlackboardItem):
     @verbatim
     NAME       a name for the item.  There is no expectation that it is 
                  unique across items, but typically it is.
-    DATASETS   a list of the datasets that serve as input a pipeline job
+    INPUT      a list of the datasets that serve as input a pipeline job
+    OUTPUT     a list of the datasets will be produced by a pipeline job
     @endverbatim
 
     These are normally created via createItem() which chooses the internal
     representation of the data.
     """
 
-    DATASETS = "DATASETS"
+    INPUT = "INPUT"
+    OUTPUT = "OUTPUT"
     PIPELINEID = "PIPELINEID"
+    JOBIDENTITY = "JOBIDENTITY"
 
-    def __init__(self, impl, name=None, datasets=None, triggerHandler=None):
+    def __init__(self, impl, jobDataset=None, name=None, inputs=None, 
+                 outputs=None, triggerHandler=None):
         """
         create an item.  This is not usually called directly by the user but
-        rather via createItem().  If the standard property parameters
-        (name, type, indexTypes, and success) are provided, they will override
-        the the corresponding properties in impl; if not provided, the default
-        is set.
+        rather via createItem().  
         @param impl     the item that is actually storing the properties
+        @param jobDataset   a dataset that provides the unique identity for
+                            this job.  
         @param name     the value for the NAME property.
-        @param datasets the list of input datasets required by this job.
+        @param inputs   a list of the output datasets (as Dataset list)
+        @param outputs  a list of the output datasets (as Dataset list)
         @param triggerHandler  a TriggerHandler instance
         """
         BasicBlackboardItem.__init__(self, impl, name)
-        if datasets:
-            dsps = []
-            if not isinstance(datasets, list):
-                datasets = [datasets]
-            for ds in datasets:
-                dsps.append(ds.toPolicy())
-            impl._setProperty(self.DATASETS, dsps)
+        if inputs:  self._setDatasets(impl, self.INPUT, inputs)
+        if outputs:  self._setDatasets(impl, self.OUTPUT, outputs)
+        impl._setProperty(self.JOBIDENTITY, jobDataset.toPolicy())
 
         self.triggerHandler = triggerHandler
 
-    def getDatasets(self):
-        dss = self.getProperty(self.DATASETS)
+    def _setDatasets(self, impl, key, datasets):
+        dsps = []
+        if not isinstance(datasets, list):
+            datasets = [datasets]
+        for ds in datasets:
+            dsps.append(ds.toPolicy())
+        impl._setProperty(key, dsps)
+
+    def getInputDatasets(self):
+        return self._getDatasets(self.INPUT)
+
+    def getOutputDatasets(self):
+        return self._getDatasets(self.OUTPUT)
+
+    def _getDatasets(self, key):
+        dss = self.getProperty(key)
         out = []
         if dss:
+            if not isinstance(dss, list):
+                dss = [dss]
             for ds in dss:
                 out.append(Dataset.fromPolicy(ds))
         return out
+
+    def getJobIdentity(self):
+        """
+        return a Dataset instance representing the unique identity of the Job.
+        """
+        return Dataset.fromPolicy(self.getProperty(self.JOBIDENTITY))
 
     def setTriggerHandler(self, handler):
         """
@@ -519,10 +541,15 @@ class JobItem(BasicBlackboardItem):
         return _decodeId(self.getProperty(self.PIPELINEID))
 
     @staticmethod
-    def createItem(name, datasets=None, triggerHandler=None, props=None):
+    def createItem(jobDataset, name, inputs=None, outputs=[], 
+                   triggerHandler=None, props=None):
         """
         create a BlackboardItem with the given properties
+        @param jobDataset      a dataset that provides the unique identity for
+                                 this job.  
         @param name            the item name
+        @param inputs          a list of the output datasets (as Dataset list)
+        @param outputs         a list of the output datasets (as Dataset list)
         @param triggerHandler  a TriggerHandler instance
         @param props           a dictionary of properties
         """
@@ -530,7 +557,7 @@ class JobItem(BasicBlackboardItem):
         if props:
             for key in props.keys():
                 impl._setProperty(key, props[key])
-        out = JobItem(impl, name, datasets, triggerHandler)
+        out = JobItem(impl, jobDataset, name, inputs, outputs, triggerHandler)
         return out
 
 class Props(object):
@@ -540,7 +567,8 @@ class Props(object):
     NAME     = BasicBlackboardItem.NAME
     SUCCESS  =     DataProductItem.SUCCESS
     DATASET  =     DataProductItem.DATASET
-    DATASETS =             JobItem.DATASETS
+    INPUT    =             JobItem.INPUT
+    OUTPUT   =             JobItem.OUTPUT
 
 
 __all__ = "BlackboardItem DictBlackboardItem PolicyBlackboardItem ImplBlackboardItem BasicBlackboardItem DataProductItem PipelineItem JobItem Props".split()

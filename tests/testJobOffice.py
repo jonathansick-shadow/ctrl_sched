@@ -57,6 +57,7 @@ class AbstractJobOfficeTestCase(unittest.TestCase):
 class DataTriggeredJobOfficeTestCase(unittest.TestCase):
     def setUp(self):
         policy = Policy.createPolicy(policyFile)
+        # pdb.set_trace()
         self.joboffice = DataTriggeredJobOffice(testdir, policy=policy,
                                                 brokerHost=brokerhost)
         self.joboffice.log.setThreshold(self.joboffice.log.WARN)
@@ -106,16 +107,18 @@ class DataTriggeredJobOfficeTestCase(unittest.TestCase):
             ds = copy.deepcopy(ds)
             ds.ids["ampid"] += 1
             dss.append(ds)
+        ods = Dataset("PostISR-CCD", visit=ds.ids["visit"], ccd=ds.ids["ccd"])
 
-        job = JobItem.createItem("ccdassembly", dss)
+        job = JobItem.createItem(ods, "ccdassembly", dss, ods)
         jev = self.joboffice.makeJobCommandEvent(job, 9993252, "testing")
 
         self.assertEquals(jev.getStatus(), "job:process")
         self.assertEquals(jev.getRunId(), "testing")
         self.assertEquals(jev.getDestinationId(), 9993252)
-        self.assert_(jev.getPropertySet().exists("dataset"))
+        self.assert_(jev.getPropertySet().exists("input"))
+        self.assert_(jev.getPropertySet().exists("output"))
 
-        dodss = jev.getPropertySet().getArrayString("dataset")
+        dodss = jev.getPropertySet().getArrayString("input")
         self.assertEquals(len(dodss), 5)
         i = 5
         for ds in dodss:

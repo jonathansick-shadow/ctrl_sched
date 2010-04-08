@@ -159,16 +159,19 @@ class SimpleTrigger(Trigger):
         # all tests pass; return this dataset
         return dataset
 
-    def listDatasets(self, template=None):
+    def listDatasets(self, template=None, restrictIDs=False):
         """
         return a list of all the datasets that will be returned by recognize().
         This implementation returns a set of datasets made up of all 
         combinations of the dataset types and allowed identifiers (for those
         identifiers that have a closed set of values).  
-        @param template    a Dataset instance representing a template for 
+        @param template     a Dataset instance representing a template for 
                               identifiers and types not constrained by this 
                               trigger.  If the given Dataset is not recognized,
                               an empty set is returned.
+        @param restrictIDs  if True, the list of datasets will only contain
+                              the IDs specified by this filter.  If false,
+                              it will also contain those found in the template.
         """
         if template:
             # the template is used to set values of identifiers not of 
@@ -176,6 +179,12 @@ class SimpleTrigger(Trigger):
             # reduced to a closed set.  
             # if not self.recognize(template):
             #     return []
+            if restrictIDs:
+                template = copy.deepcopy(template)
+                if template.ids is None: template.ids = {}
+                for id in template.ids.keys():
+                    if not id in self.idfilts.keys():
+                        del template.ids[id]
             types = [ template.type ]
         else:
             if not self.dataTypes:
@@ -196,41 +205,50 @@ class SimpleTrigger(Trigger):
             if len(idvals[id]) == 0:
                 del idvals[id]
 
-        # these are the idnames, then, we are varying; and the number of 
-        # values for each.  The total number of datasets returned will then
-        # be len(types) * PI(valcnt.values())
         idnames = idvals.keys()
-        valcnt = {}
-        for id in idnames:
-            valcnt[id] = len(idvals[id])
-
         out = []
-        for type in types:
-            # initialize our multidimensional iterator
-            iter = valcnt.fromkeys(idnames, 0)
+        if len(idnames) > 0:
 
-            # quit adding when the last axis of the iterator meets its limit
-            while iter[idnames[-1]] < valcnt[idnames[-1]]:
+            # these are the idnames, then, we are varying; and the number of 
+            # values for each.  The total number of datasets returned will then
+            # be len(types) * PI(valcnt.values())
+            valcnt = {}
+            for id in idnames:
+                valcnt[id] = len(idvals[id])
 
-                # clone the template
-                ds = copy.deepcopy(template)
-                ds.type = type
-                if ds.ids is None:
-                    ds.ids = {}
+            for type in types:
+                # initialize our multidimensional iterator
+                iter = valcnt.fromkeys(idnames, 0)
 
-                # set the values of the identifiers in the dataset
-                for id in iter.keys():
-                    ds.ids[id] = idvals[id][iter[id]]
-                out.append(ds)
+                # quit adding when the last axis of the iterator meets its
+                # limit
+                while iter[idnames[-1]] < valcnt[idnames[-1]]:
 
-                # increment the iterator
-                for i in xrange(len(idnames)):
-                    iter[idnames[i]] += 1
-                    if iter[idnames[i]] < valcnt[idnames[i]]:
-                        break
-                    if i == len(idnames) - 1:
-                        break
-                    iter[idnames[i]] = 0
+                    # clone the template
+                    ds = copy.deepcopy(template)
+                    ds.type = type
+                    if ds.ids is None:
+                        ds.ids = {}
+
+                    # set the values of the identifiers in the dataset
+                    for id in iter.keys():
+                        ds.ids[id] = idvals[id][iter[id]]
+                    out.append(ds)
+
+                    # increment the iterator
+                    for i in xrange(len(idnames)):
+                        iter[idnames[i]] += 1
+                        if iter[idnames[i]] < valcnt[idnames[i]]:
+                            break
+                        if i == len(idnames) - 1:
+                            break
+                        iter[idnames[i]] = 0
+
+        elif restrictIDs:
+            # single dataset list based entirely on template
+            ds = copy.deepcopy(template)
+            ds.type = type
+            out.append(ds)
 
         return out
     
