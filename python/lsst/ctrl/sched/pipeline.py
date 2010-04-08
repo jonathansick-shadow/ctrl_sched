@@ -67,14 +67,27 @@ class GetAJobClient(JobOfficeClient):
     def getAssignment(self):
         """
         wait for an assignment (in the form of an event) from the JobOffice
-        and return the assigned datasets to process.
+        and return the info on the job to process.
+        @return tuple   3 elements:  1) the jobIdentity dictionary,
+                                     2) a list of the input datasets
+                                     3) a list of the expected output datasets
         """
         event = self.rcvr.receiveStatusEvent()
         if not event:
             return None
 
-        return utils.unserializeDatasetList(
-            event.getPropertySet().getArrayString("dataset"))
+        ps = event.getPropertySet()
+        inputs = utils.unserializeDatasetList(
+                                       ps.getArrayString("inputDatasets"))
+        outputs = utils.unserializeDatasetList(
+                                       ps.getArrayString("outputDatasets"))
+        jobds = utils.unserializeDataset(ps.getString("identity"))
+        jobid = jobs.ids.copy()
+        if jobds.type:
+            jobid["type"] = jobds.type
+
+        return (jobid, inputs, outputs)
+                                       
 
     def tellReady(self):
         """
@@ -161,7 +174,13 @@ class _GetAJobComp(object):
 #            raise RuntimeError("Stage %s: Unsupported mode: %s" %
 #                               (self.getName(), self.mode))
 
-        self.clipboardKey = self.policy.getString("datasetsClipboardKey")
+        self.clipboardKeys = {}
+        self.clipboardKeys["jobIdentity"] = \
+           self.policy.getString("outputKeys.jobIdentity")
+        self.clipboardKeys["inputDatasets"] = \
+           self.policy.getString("outputKeys.inputDatasets")
+        self.clipboardKeys["outputDatasets"] = \
+           self.policy.getString("outputKeys.outputDatasets")
 
         topic = self.policy.getString("pipelineEvent")
         self.client = GetAJobClient(self.getRun(), self.getName(), topic,
@@ -170,9 +189,11 @@ class _GetAJobComp(object):
 
     def setAssignment(self, clipboard):
         self.client.tellReady()
-        datasets = self.client.getAssignment()
+        jobid, inputs, outputs = self.client.getAssignment()
         clipboard.put("originatorId", self.client.getOriginatorId())
-        clipboard.put(self.clipboardKey, datasets)
+        clipboard.put(self.clipboardKeys["inputDatasets"], inputs)
+        clipboard.put(self.clipboardKeys["outputDatasets"], outputs)
+        clipboard.put(self.clipboardKeys["jobIdentity"], jobid)
         
 
 class GetAJobParallelProcessing(harnessStage.ParallelProcessing, _GetAJobComp)
@@ -216,7 +237,7 @@ class _DataReadyComp(object):
         self.client = DataReadyClient(self.getRun(), self.getName(), topic,
                                       self.getEventBrokerHost())
         
-#    def tellAllReady(self, success=None):
-#        """
-#        send even 
-#        """
+   def tellAllReady(self, success=None):
+       """
+       send an event reporting on the output datasets that have 
+       """
