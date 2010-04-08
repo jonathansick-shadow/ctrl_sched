@@ -1,0 +1,35 @@
+# testPipeline.paf
+#
+# This demonstrates the use of the JobOffice stages.
+#
+
+localLogMode: true
+eventBrokerHost: "lsst8.ncsa.uiuc.edu" 
+logThreshold: -3
+
+appStage: {
+    name: "GetAJob"
+    parallelClass: lsst.ctrl.sched.pipeline.GetAJobParallelProcessing
+    stagePolicy: @getajob.paf
+}
+appStage: {
+    name: "FakeInputStage"
+    parallelClass: fillerStages.FakeInput
+    stagePolicy: @filler.paf
+}
+appStage: {
+    name: "FakeProcessing"
+    parallelClass: fillerStages.FakeProcessing
+    stagePolicy: @filler.paf
+}
+appStage: {
+    name: "FakeOutput"
+    parallelClass: fillerStages.FakeOutput
+    stagePolicy: @output.paf
+}
+appStage: {
+    name: "JobDone"
+    parallelClass: lsst.ctrl.sched.pipeline.JobDoneParallelProcessing
+    stagePolicy: @jobdone.paf
+}
+

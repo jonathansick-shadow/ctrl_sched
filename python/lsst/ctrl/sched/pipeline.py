@@ -382,3 +382,43 @@ class JobDoneSerialProcessing(harnessStage.SerialProcessing, _JobDoneComp):
         """
         self.tellJobDone(clipboard)
 
+class GetAJobFromMasterStage(harnessStage.Stage):
+    """
+    Stage implementation that gets a job assignment for processing by
+    the master Pipeline thread.
+    """
+    serialClass = GetAJobSerialProcessing
+
+class GetAJobFromSliceStage(harnessStage.Stage):
+    """
+    Stage implementation that gets a job assignment for processing by
+    the Slice thread.
+    """
+    parallelClass = GetAJobParallelProcessing
+
+class JobDoneFromMasterStage(harnessStage.Stage):
+    """
+    Stage implementation that reports on newly available datasets.
+    """
+    serialClass = JobDoneSerialProcessing
+
+class JobDoneFromSliceStage(harnessStage.Stage):
+    """
+    Stage implementation that reports on newly available datasets.
+    """
+    parallelClass = JobDoneParallelProcessing
+
+class DataReadyFromMasterStage(harnessStage.Stage):
+    """
+    Stage implementation that reports on newly available datasets via the
+    master Pipeline thread.
+    """
+    serialClass = DataReadySerialProcessing
+
+class DataReadyFromSliceStage(harnessStage.Stage):
+    """
+    Stage implementation that reports on newly available datasets via the
+    master Pipeline thread.
+    """
+    parallelClass = DataReadyParallelProcessing
+
