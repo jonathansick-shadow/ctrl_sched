@@ -10,7 +10,7 @@ datasets: {
    # reportAllPossible:  True
 }
 
-outputKeys: {
+inputKeys: {
     # completedDatasets: outputDatasets
     # possibleDatasets:  targetDatasets
 }

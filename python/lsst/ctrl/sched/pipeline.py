@@ -4,7 +4,7 @@ tools and stages for pipelines that interact with the JobOffice scheduler
 import lsst.pex.harness.stage as harnessStage
 from dataset import Dataset
 import lsst.ctrl.sched.utils as utils
-from lsst.ctrl.events as EventSystem, EventReceiver
+from lsst.ctrl.events import EventSystem, EventReceiver
 from lsst.pex.policy import Policy, DefaultPolicyFile
 
 
@@ -234,7 +234,7 @@ class _GetAJobComp(object):
         clipboard.put(self.clipboardKeys["jobIdentity"], jobid)
         
 
-class GetAJobParallelProcessing(harnessStage.ParallelProcessing, _GetAJobComp)
+class GetAJobParallelProcessing(harnessStage.ParallelProcessing, _GetAJobComp):
     """
     Stage implementation that gets a job assignment for processing by
     the parallel Slice.
@@ -245,7 +245,7 @@ class GetAJobParallelProcessing(harnessStage.ParallelProcessing, _GetAJobComp)
         """
         self.setAssignment(clipboard)
 
-class GetAJobSerialProcessing(harnessStage.SerialProcessing, _GetAJobComp)
+class GetAJobSerialProcessing(harnessStage.SerialProcessing, _GetAJobComp):
     """
     Stage implementation that gets a job assignment for processing by
     the master Pipeline thread.
@@ -273,12 +273,14 @@ class _DataReadyComp(object):
 
         self.clipboardKeys = {}
         self.clipboardKeys["completedDatasets"] = \
-           self.policy.getString("outputKeys.completedDatasets")
+           self.policy.getString("inputKeys.completedDatasets")
         self.clipboardKeys["possibleDatasets"] = \
-           self.policy.getString("outputKeys.possibleDatasets")
+           self.policy.getString("inputKeys.possibleDatasets")
 
         self.dataclients = []
-        clpols = self.policy.getPolicyArray("datasets")
+        clpols = []
+        if self.policy.exists("datasets"):
+            clpols = self.policy.getPolicyArray("datasets")
         for pol in clpols:
             dstype = None
             if pol.exists("datasetType"):
@@ -291,27 +293,27 @@ class _DataReadyComp(object):
             self.dataclients.append(client)
         
 
-   def tellDataReady(self, clipboard):
-       """
-       send an event reporting on the output datasets that have been
-       attempted by this pipeline.
-       @param clipboard     the pipeline clipboard containing the output
-                              datasets
-       """
-       completed = clipboard.get(self.clipboardKeys["completedDatasets"])
-       possible = clipboard.get(self.clipboardKeys["possibleDatasets"])
+    def tellDataReady(self, clipboard):
+        """
+        send an event reporting on the output datasets that have been
+        attempted by this pipeline.
+        @param clipboard     the pipeline clipboard containing the output
+                               datasets
+        """
+        completed = clipboard.get(self.clipboardKeys["completedDatasets"])
+        possible = clipboard.get(self.clipboardKeys["possibleDatasets"])
 
-       for client in self.dataclients:
-           if len(possible) < 1:
-               break
-           possible = client.tellDataReady(possible, completed)
+        for client in self.dataclients:
+            if len(possible) < 1:
+                break
+            possible = client.tellDataReady(possible, completed)
 
-       # update the possible list for the ones we have not reported
-       # on yet.
-       clipboard.set(self.clipboardKeys["possibleDatasets"], possible)
+        # update the possible list for the ones we have not reported
+        # on yet.
+        clipboard.set(self.clipboardKeys["possibleDatasets"], possible)
        
 
-class DataReadyParallelProcessing(harnessStage.ParallelProcessing, _DataReadyComp)
+class DataReadyParallelProcessing(harnessStage.ParallelProcessing, _DataReadyComp):
     """
     Stage implementation that reports on newly available datasets via the
     Slice threads.
@@ -323,7 +325,7 @@ class DataReadyParallelProcessing(harnessStage.ParallelProcessing, _DataReadyCom
         """
         self.tellDataReady(clipboard)
 
-class DataReadySerialProcessing(harnessStage.SerialProcessing, _DataReadyComp)
+class DataReadySerialProcessing(harnessStage.SerialProcessing, _DataReadyComp):
     """
     Stage implementation that reports on newly available datasets via the
     master Pipeline thread.
@@ -335,4 +337,48 @@ class DataReadySerialProcessing(harnessStage.SerialProcessing, _DataReadyComp)
         """
         self.tellDataReady(clipboard)
 
+class _JobDoneComp(_DataReadyComp):
+
+    def setup(self):
+        _DataReadyComp.setup(self, "JobDone_dict.paf")
+
+        self.jobsuccess = self.policy.getBool("jobSuccess")
+
+        topic = self.policy.getString("pipelineEvent")
+        self.jobclient = JobDoneClient(self.getRun(), self.getName(), topic,
+                                       self.getEventBrokerHost())
+
+
+    def tellJobDone(self, clipboard=None):
+        """
+        alert the JobOffice that this pipeline completed its job.  This
+        will also alert about ready datasets.
+        """
+        if clipboard and len(self.dataclients) > 0:
+            self.tellDataReady(clipboard)
+        self.jobclient.tellDone(self.jobSuccess)
+
+class JobDoneParallelProcessing(harnessStage.ParallelProcessing, _JobDoneComp):
+    """
+    Stage implementation that reports on newly available datasets via the
+    Slice threads.
+    """
+    def process(self, clipboard):
+        """
+        examine the clipboard for the list of persisted datasets and
+        announce their availability to JobOffices via an event.
+        """
+        self.tellJobDone(clipboard)
+
+class JobDoneSerialProcessing(harnessStage.SerialProcessing, _JobDoneComp):
+    """
+    Stage implementation that reports on newly available datasets via the
+    master Pipeline thread.
+    """
+    def preprocess(self, clipboard):
+        """
+        examine the clipboard for the list of persisted datasets and
+        announce their availability to JobOffices via an event.
+        """
+        self.tellJobDone(clipboard)
 

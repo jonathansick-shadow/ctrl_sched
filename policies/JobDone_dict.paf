@@ -1,21 +1,41 @@
 #<?cfg paf dictionary ?>
 #
-target: DataReadyStage
+target: JobDoneStage
 
-# description:  "data for configuring the stage that announces the 
-#                availability of data to interested JobOffices"
+# description:  "data for configuring the stage that announces to 
+#                its pipeline's JobOffice the completion of the its given 
+#                job."
 
 definitions: {
+   pipelineEvent:  {
+      type:  string
+      description:  "the event topic name to use for telling the JobOffice
+                     that the job is done."
+      minOccurs:  1
+      maxOccurs:  1
+   }
+
+   jobSuccess: {
+      type:  bool
+      description:  "what to indicate to the JobOffice as to the success 
+                     of the completed job. If this stage is at the end of 
+                     the pipeline, then this should be set to True.  If it
+                     is part of a failure stage, then the value should be
+                     False."
+   }
+
    datasets:  {
       type:  policy
       description:  "configuration for issuing events of a particular 
-                     dataset type.  When multiple entries appear, each 
+                     dataset type.  If no entries are provided, data-ready
+                     events will not be issued in this stage.  
+                     When multiple entries appear, each 
                      should have a different datasetType parameter set.
                      (and presumably a different dataReadyEvent).  When
                      datasetType is not specified, it is taken to mean 
                      all dataset types.  An entry without a datasetType
                      will effectively short-circuit all subsequent entries."
-      minOccurs:  1
+      minOccurs:   0
       maxOccurs:  -1
       dictionary:  {
         definitions: {

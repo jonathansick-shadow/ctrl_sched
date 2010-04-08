@@ -1,25 +1,23 @@
 pipelineEvent:  CcdAssemblyJob
 
-#  datasetsClipboardKey: outputDatasets
+# jobSuccess: True
 
-datasetId: {
-    datasetType:  PostISR-CCD
-    fromClipboard: {
-       # this is a list of identifiers that are expected to be one the 
-       # clipboard stored in a dictionary under the name given by 
-       # "identityKey" below.  (Default: visitIdentity).
-       # This is information is typically posted by the GetAJobStage.  
+# if there are no datasets entries no data-ready events will be sent 
+# by this stage.  
+datasets: {
+   dataReadyEvent:  CcdAssemblyJob
 
-       # identityKey:  visitIdentity
-       id: name
-       id: visit
-       id: ccd
-       id: snap
-       id: filter
-    }
-    set: {
-       # these are arbitrary id key-value pairs that help describe
-       # the dataset
-       field:  deep
-    }
+   # restrict ourselves to datasets of this type; if not given, all
+   # types will be reported
+   #
+   # datasetType:  PostISR-CCD
+
+   # reportAllPossible:  True
 }
+
+inputKeys: {
+    # completedDatasets: outputDatasets
+    # possibleDatasets:  targetDatasets
+}
+
+
