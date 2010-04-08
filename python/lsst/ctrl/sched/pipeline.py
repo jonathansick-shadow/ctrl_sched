@@ -168,16 +168,15 @@ class DataReadyClient(JobOfficeClient):
         return remain
 
 
-class JobDoneClient(DataReadyClient):
+class JobDoneClient(JobOfficeClient):
     """
     a component working on the behalf of a pipeline to alert JobOffices
-    that a job is finished.  It can also signal what datasets were created.
+    that a job is finished.  
 
     @see JobDoneStage
     """
 
-    def __init__(self, runId, pipelineName, dataTopic, jobTopic, brokerHost,
-                 brokerPort=None):
+    def __init__(self, runId, pipelineName, topic, brokerHost,brokerPort=None):
         """
         create the client
         @param runId         the Run ID for the pipeline
@@ -185,10 +184,10 @@ class JobDoneClient(DataReadyClient):
         @param topic         the topic to be used to communicate with
                                  the JobOffice
         """
-        DataReadyClient.__init__(self, runId, pipelineName, dataTopic,
+        JobOfficeClient.__init__(self, runId, pipelineName, 
                                  brokerHost, brokerPort=brokerPort)
                                  
-        self.jobSender = utils.EventSender(self.runid, jobTopic, brokerHost,
+        self.jobSender = utils.EventSender(self.runid, topic, brokerHost,
                                            brokerPort)
 
     def tellDone(self, success):
@@ -223,7 +222,8 @@ class _GetAJobComp(object):
         topic = self.policy.getString("pipelineEvent")
         self.client = GetAJobClient(self.getRun(), self.getName(), topic,
                                     self.getEventBrokerHost())
-        
+        self.log.log(Log.INFO-1,
+                     "Using OriginatorId = " % self.client.getOriginatorId())
 
     def setAssignment(self, clipboard):
         self.client.tellReady()
