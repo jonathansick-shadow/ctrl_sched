@@ -6,35 +6,42 @@
 localLogMode: true
 eventBrokerHost: "lsst8.ncsa.uiuc.edu" 
 logThreshold: -3
+nSlices: 
 
 appStage: {
     name: "GetAJob"
     parallelClass: lsst.ctrl.sched.pipeline.GetAJobParallelProcessing
     stagePolicy: @getajob.paf
+    eventTopic: None
 }
 appStage: {
-    name: "FakeInputStage"
+    name: "FakeInput"
     parallelClass: fillerStages.FakeInput
     stagePolicy: @filler.paf
+    eventTopic: None
 }
 appStage: {
     name: "FakeProcessing"
     parallelClass: fillerStages.FakeProcessing
     stagePolicy: @filler.paf
+    eventTopic: None
 }
 appStage: {
     name: "FakeOutput"
     parallelClass: fillerStages.FakeOutput
-    stagePolicy: @output.paf
+    stagePolicy: @filler.paf
+    eventTopic: None
 }
 appStage: {
     name: "JobDone"
     parallelClass: lsst.ctrl.sched.pipeline.JobDoneParallelProcessing
     stagePolicy: @jobdone.paf
+    eventTopic: None
 }
 failureStage: {
     name: "Failure"
     parallelClass: lsst.ctrl.sched.pipeline.JobDoneParallelProcessing
     stagePolicy: @failure.paf
+    eventTopic: None
 }
 

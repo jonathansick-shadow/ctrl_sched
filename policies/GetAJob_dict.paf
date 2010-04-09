@@ -31,7 +31,7 @@ definitions: {
                               which will appear on the clipboard as a 
                               dictionary of identifier name-value pairs."
                minOccurs: 0
-               maxOccurs: 0
+               maxOccurs: 1
                default:   jobIdentity
             }
 
@@ -41,7 +41,7 @@ definitions: {
                               should be processed by this stage.  They will
                               appear as Dataset instances."
                minOccurs: 0
-               maxOccurs: 0
+               maxOccurs: 1
                default:   inputDatasets
             }
 
@@ -51,7 +51,7 @@ definitions: {
                               should be processed by this stage.  They will
                               appear as Dataset instances."
                minOccurs: 0
-               maxOccurs: 0
+               maxOccurs: 1
                default:   targetDatasets
             }
 
@@ -61,7 +61,7 @@ definitions: {
                               been successfully persisted.  They will
                               appear as Dataset instances."
                minOccurs: 0
-               maxOccurs: 0
+               maxOccurs: 1
                default:   outputDatasets
             }
          }

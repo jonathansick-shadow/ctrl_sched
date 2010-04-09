@@ -11,7 +11,7 @@ persist: {
     # The schedroot will get filled in with the directory passed in 
     # at the job office's command-line.
     # 
-    dir:   %(schedroot)s/%(name)-joboffice
+    dir:   %(schedroot)s/%(name)s-joboffice
 }
 
 listen:  {

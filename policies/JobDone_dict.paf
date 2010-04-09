@@ -19,9 +19,9 @@ definitions: {
       type:  bool
       description:  "what to indicate to the JobOffice as to the success 
                      of the completed job. If this stage is at the end of 
-                     the pipeline, then this should be set to True.  If it
+                     the pipeline, then this should be set to true.  If it
                      is part of a failure stage, then the value should be
-                     False."
+                     false."
    }
 
    datasets:  {
@@ -59,16 +59,16 @@ definitions: {
 
            reportAllPossible:  {
               type:  bool
-              description:  "if False, the data ready event will only be issued
+              description:  "if false, the data ready event will only be issued
                              for those datasets that have thus far been 
                              persisted (as given in the completeDatasets list).
                              Otherwise, all possible datasets will be reported;
                              those that have not been persisted will be marked 
                              invalid.  In the job-done context, this almost
-                             always is set to True."
+                             always is set to true."
               minOccurs:  0
               maxOccurs:  1
-              default:  True
+              default:  true
            }
 
         }
@@ -92,7 +92,7 @@ definitions: {
                               been successfully persisted.  They will
                               appear as Dataset instances."
                minOccurs: 0
-               maxOccurs: 0
+               maxOccurs: 1
                default:   outputDatasets
             }
 
@@ -103,7 +103,7 @@ definitions: {
                               alert JobOffices about.  They will
                               appear as Dataset instances."
                minOccurs: 0
-               maxOccurs: 0
+               maxOccurs: 1
                default:   targetDatasets
             }
          }

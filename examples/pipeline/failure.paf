@@ -18,7 +18,7 @@ pipelineEvent:  testPipeline
 # This must be set to False for a failure stage to indicate that this 
 # pipeline failed to finish its job.
 #
-jobSuccess: False
+jobSuccess: false
 
 # This job-done stage will also send out data-ready event when this
 # policy file contains one or more "datasets" items.  This failure policy

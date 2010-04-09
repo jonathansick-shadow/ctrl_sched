@@ -5,4 +5,6 @@ failIteration:  3     # set to value >= 0 to test the failure stage
 inputKeys: {
     jobIdentity: jobIdentity
     outputDatasets:  outputDatasets
+    inputDatasets:  inputDatasets
+    possibleDatasets:  targetDatasets
 }

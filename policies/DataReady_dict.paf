@@ -39,7 +39,7 @@ definitions: {
 
            reportAllPossible:  {
               type:  bool
-              description:  "if False, the data ready event will only be issued
+              description:  "if false, the data ready event will only be issued
                              for those datasets that have thus far been 
                              persisted (as given in the completeDatasets list).
                              Otherwise, all possible datasets will be reported;
@@ -47,7 +47,7 @@ definitions: {
                              invalid."
               minOccurs:  0
               maxOccurs:  1
-              default:  True
+              default:  true
            }
 
         }
@@ -71,7 +71,7 @@ definitions: {
                               been successfully persisted.  They will
                               appear as Dataset instances."
                minOccurs: 0
-               maxOccurs: 0
+               maxOccurs: 1
                default:   outputDatasets
             }
 
@@ -82,7 +82,7 @@ definitions: {
                               alert JobOffices about.  They will
                               appear as Dataset instances."
                minOccurs: 0
-               maxOccurs: 0
+               maxOccurs: 1
                default:   targetDatasets
             }
          }

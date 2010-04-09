@@ -3,26 +3,29 @@ stages for a test pipeline that demonstrates interactions with a JobOffice
 scheduler.  
 """
 import lsst.pex.harness.stage as harnessStage
+from lsst.pex.logging import Log
 from lsst.ctrl.sched.dataset import Dataset
 
 
-class FakeInputStage(harnessStage.ParallelProcessing):
+class FakeInput(harnessStage.ParallelProcessing):
     """
     this stage logs the dataset we're supposed to be reading in
     """
 
     def setup(self):
+        if not self.log:
+            self.log = Log.getDefaultLog()
         self.mylog = Log(self.log, "inputStage")
         self.inputDatasetKey = \
-                    self.policy.getString("outputKeys.inputDatasets")
+                    self.policy.getString("inputKeys.inputDatasets")
 
     def process(self, clipboard):
         inputs = clipboard.get(self.inputDatasetKey)
         for ds in inputs:
             self.mylog.log(Log.INFO, "Loading " + ds.toString())
 
-
-
+class FakeInputStage(harnessStage.Stage):
+    parallelClass = FakeInput
 
 class FakeProcessing(harnessStage.ParallelProcessing):
     """
@@ -30,10 +33,12 @@ class FakeProcessing(harnessStage.ParallelProcessing):
     """
 
     def setup(self):
+        if not self.log:
+            self.log = Log.getDefaultLog()
         self.mylog = Log(self.log, "fakeProcess")
         self.jobIdentityItem = \
                     self.policy.getString("inputKeys.jobIdentity")
-        self.sleeptime = self.policy.getInteger("sleep")
+        self.sleeptime = self.policy.getInt("sleep")
         self.visitCount = 0
         self.failOnVisitN = self.policy.getInt("failIteration")
         
@@ -47,20 +52,25 @@ class FakeProcessing(harnessStage.ParallelProcessing):
         if self.visitCount == self.failOnVisit+1:
             raise RuntimeError("testing failure stage")
 
+class FakeProcessingStage(harnessStage.Stage):
+    parallelClass = FakeProcessing
+
 class FakeOutput(harnessStage.ParallelProcessing):
     """
     this stage simulates work by sleeping
     """
 
     def setup(self):
+        if not self.log:
+            self.log = Log.getDefaultLog()
         self.mylog = Log(self.log, "output")
         self.outputDatasetsKey = \
                     self.policy.getString("inputKeys.outputDatasets")
-        self.targetDatasetsKey = \
-                    self.policy.getString("inputKeys.targetDatasets")
+        self.possibleDatasetsKey = \
+                    self.policy.getString("inputKeys.possibleDatasets")
 
     def process(self, clipboard):
-        expected = clipboard.get(self.targetDatasetsKey)
+        expected = clipboard.get(self.possibleDatasetsKey)
         outputds = clipboard.get(self.outputDatasetsKey)
 
         # this implementation will pretend to write out all of the
@@ -71,6 +81,9 @@ class FakeOutput(harnessStage.ParallelProcessing):
             outputds.append(ds)
 
         clipboard.set(self.outputDatasetsKey, outputds)
+
+class FakeOutputStage(harnessStage.Stage):
+    parallelClass = FakeOutput
 
     
 

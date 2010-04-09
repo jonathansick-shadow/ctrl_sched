@@ -12,7 +12,7 @@ datasets: {
    #
    # datasetType:  PostISR-CCD
 
-   # reportAllPossible:  True
+   # reportAllPossible:  true
 }
 
 inputKeys: {

@@ -24,6 +24,7 @@ class JobOfficeClient(object):
         @param topic         the topic to be used to communicate with
                                  the JobOffice
         """
+        self.runId = runId
         self.name = pipelineName
         self.esys = EventSystem.getDefaultEventSystem()
         self.brokerhost = brokerHost
@@ -56,7 +57,7 @@ class GetAJobClient(JobOfficeClient):
         JobOfficeClient.__init__(self, runId, pipelineName, brokerHost,
                                  brokerPort=brokerPort)
 
-        self.sender = utils.EventSender(self.runid, topic, brokerHost)
+        self.sender = utils.EventSender(self.runId, topic, brokerHost)
         select = "RUNID='%s' and STATUS='%s:%s'" % \
                  (runId, topic, "ready")
         if brokerPort:
@@ -124,7 +125,7 @@ class DataReadyClient(JobOfficeClient):
         self.datasetType = datasetType
         self.reportAllPossible = reportAllPossible
         
-        self.dataSender = utils.EventSender(self.runid, topic, brokerHost,
+        self.dataSender = utils.EventSender(self.runId, topic, brokerHost,
                                             brokerPort)
 
 
@@ -187,7 +188,7 @@ class JobDoneClient(JobOfficeClient):
         JobOfficeClient.__init__(self, runId, pipelineName, 
                                  brokerHost, brokerPort=brokerPort)
                                  
-        self.jobSender = utils.EventSender(self.runid, topic, brokerHost,
+        self.jobSender = utils.EventSender(self.runId, topic, brokerHost,
                                            brokerPort)
 
     def tellDone(self, success):
@@ -202,7 +203,7 @@ class _GetAJobComp(object):
         deffile = DefaultPolicyFile("ctrl_sched","GetAJob_dict.paf","policies")
         defpol = Policy.createPolicy(deffile, deffile.getRepositoryPath())
 
-        if not hasattr(self,"policy") or self.policy:
+        if not hasattr(self,"policy") or not self.policy:
             self.policy = Policy()
         self.policy.mergeDefaults(defpol.getDictionary())
 
@@ -234,7 +235,7 @@ class _GetAJobComp(object):
         clipboard.put(self.clipboardKeys["jobIdentity"], jobid)
         
 
-class GetAJobParallelProcessing(harnessStage.ParallelProcessing, _GetAJobComp):
+class GetAJobParallelProcessing(_GetAJobComp, harnessStage.ParallelProcessing):
     """
     Stage implementation that gets a job assignment for processing by
     the parallel Slice.
@@ -245,7 +246,7 @@ class GetAJobParallelProcessing(harnessStage.ParallelProcessing, _GetAJobComp):
         """
         self.setAssignment(clipboard)
 
-class GetAJobSerialProcessing(harnessStage.SerialProcessing, _GetAJobComp):
+class GetAJobSerialProcessing(_GetAJobComp, harnessStage.SerialProcessing):
     """
     Stage implementation that gets a job assignment for processing by
     the master Pipeline thread.
@@ -262,7 +263,7 @@ class _DataReadyComp(object):
         deffile = DefaultPolicyFile("ctrl_sched", policyDict, "policies")
         defpol = Policy.createPolicy(deffile, deffile.getRepositoryPath())
 
-        if not hasattr(self,"policy") or self.policy:
+        if not hasattr(self,"policy") or not self.policy:
             self.policy = Policy()
         self.policy.mergeDefaults(defpol.getDictionary())
 
@@ -313,7 +314,7 @@ class _DataReadyComp(object):
         clipboard.set(self.clipboardKeys["possibleDatasets"], possible)
        
 
-class DataReadyParallelProcessing(harnessStage.ParallelProcessing, _DataReadyComp):
+class DataReadyParallelProcessing(_DataReadyComp, harnessStage.ParallelProcessing):
     """
     Stage implementation that reports on newly available datasets via the
     Slice threads.
@@ -325,7 +326,7 @@ class DataReadyParallelProcessing(harnessStage.ParallelProcessing, _DataReadyCom
         """
         self.tellDataReady(clipboard)
 
-class DataReadySerialProcessing(harnessStage.SerialProcessing, _DataReadyComp):
+class DataReadySerialProcessing(_DataReadyComp, harnessStage.SerialProcessing):
     """
     Stage implementation that reports on newly available datasets via the
     master Pipeline thread.
@@ -358,7 +359,7 @@ class _JobDoneComp(_DataReadyComp):
             self.tellDataReady(clipboard)
         self.jobclient.tellDone(self.jobSuccess)
 
-class JobDoneParallelProcessing(harnessStage.ParallelProcessing, _JobDoneComp):
+class JobDoneParallelProcessing(_JobDoneComp, harnessStage.ParallelProcessing):
     """
     Stage implementation that reports on newly available datasets via the
     Slice threads.
@@ -370,7 +371,7 @@ class JobDoneParallelProcessing(harnessStage.ParallelProcessing, _JobDoneComp):
         """
         self.tellJobDone(clipboard)
 
-class JobDoneSerialProcessing(harnessStage.SerialProcessing, _JobDoneComp):
+class JobDoneSerialProcessing(_JobDoneComp, harnessStage.SerialProcessing):
     """
     Stage implementation that reports on newly available datasets via the
     master Pipeline thread.

@@ -64,7 +64,11 @@ def main():
     # create the logger(s)
     logfile = cl.opts.logfile
     if not logfile:
-        logfile = os.path.join(cl.opts.rootdir, name, "joboffice.log")
+        logdir = os.path.join(cl.opts.rootdir, name)
+        if policy.exists("persist.dir"):
+            logdir = policy.get("persist.dir") % \
+                     {"schedroot": cl.opts.rootdir, "name": name }
+        logfile = os.path.join(logdir, "joboffice.log")
     if not os.path.exists(logfile):
         if not os.path.exists(os.path.dirname(logfile)):
             os.makedirs(os.path.dirname(logfile))
