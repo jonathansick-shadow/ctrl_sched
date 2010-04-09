@@ -1,0 +1,99 @@
+#<?cfg paf policy ?>
+#
+# this a logical name for this job office, refecting the pipelines
+# that it manages.  Our test pipeline will, say, assemble amplifier
+# exposures into a single CCD exposure.
+#
+name:  ccdassembly
+
+persist: {
+    # this tells the JobOffice where to store its data as template.  
+    # The schedroot will get filled in with the directory passed in 
+    # at the job office's command-line.
+    # 
+    dir:   %(schedroot)s/%(name)-joboffice
+}
+
+listen:  {
+
+    # the host where the event broker is running
+    # 
+    brokerHostName:      lsst8.ncsa.uiuc.edu
+
+    # the event topic(s) that this JobOffice will listen for to receive
+    # events about available data that its pipeline will need.  If
+    # there are multiple events it needs to listen to from different 
+    # preceding pipelines, then provide multiple "dataReadyEvent"
+    # entries here.  These must match the "dataReadyEvent" parameters
+    # set in the data-ready and/or job-done stages of the relevant 
+    # preceding pipelines.  
+    # 
+    dataReadyEvent:      PostISRAvailable
+
+    # the event topic that this JobOffice will use to communicate with 
+    # its pipeline.  This must match the "pipelineEvent" parameters
+    # set in the pipeline's get-a-job and job-done stage policies 
+    # (e.g. getajob.paf and jobdone.paf, respectively).
+    # 
+    pipelineEvent:       CcdAssemblyJob
+
+    # the event that this JobOffice will use to receive an event to 
+    # shut itself down.
+    # 
+    stopEvent:           JobOfficeStop
+}
+
+schedule: {
+    # the triggers identifies the datasets that must be available in order
+    # to schedule a Job.  
+    # 
+    # this trigger indicates that 16 PostISR images with amp IDs 0-15
+    # will trigger the scheduling of a job.
+    trigger: {
+        datasetType:  PostISR
+        id: {
+            name: amp
+            min: 0
+            lim: 16
+        }
+    }
+
+    # the jobDatasets parameterizes the datasets that should be
+    # provided as input to a job
+    #
+    # a job will list 16 PostISR datasets with the given type and identifiers
+    # as attributes.  The ampid will range 0-15.  
+    job: {
+      input: {
+         datasetType:  PostISR
+         id: {
+           name:  visitid
+         }
+         id: {
+           name:  ccdid
+         }
+         id: {
+           name:  ampid
+           min: 0
+           lim: 16
+         }
+         id: {
+           name:  snapid
+         }
+      }
+
+      output: {
+        datasetType:  PostISR-CCD
+        id: {
+          name:  visitid
+        }
+        id: {
+          name:  ccdid
+        }
+        id: {
+          name:  snapid
+        }
+      }
+    }
+}
+

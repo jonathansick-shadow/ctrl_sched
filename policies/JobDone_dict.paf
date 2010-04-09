@@ -64,7 +64,8 @@ definitions: {
                              persisted (as given in the completeDatasets list).
                              Otherwise, all possible datasets will be reported;
                              those that have not been persisted will be marked 
-                             invalid."
+                             invalid.  In the job-done context, this almost
+                             always is set to True."
               minOccurs:  0
               maxOccurs:  1
               default:  True

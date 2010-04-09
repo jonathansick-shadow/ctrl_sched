@@ -32,4 +32,9 @@ appStage: {
     parallelClass: lsst.ctrl.sched.pipeline.JobDoneParallelProcessing
     stagePolicy: @jobdone.paf
 }
+failureStage: {
+    name: "Failure"
+    parallelClass: lsst.ctrl.sched.pipeline.JobDoneParallelProcessing
+    stagePolicy: @failure.paf
+}
 

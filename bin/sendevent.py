@@ -87,6 +87,7 @@ def main():
     else:
         fail("no command!")
 
+    inform("sending %s event", cmd)
     sender.send(ev)
     sys.exit(0)
 

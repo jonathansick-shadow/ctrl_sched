@@ -1,0 +1,8 @@
+#<?cfg paf policy ?>
+#
+sleep:  10 # in seconds
+failIteration:  3     # set to value >= 0 to test the failure stage
+inputKeys: {
+    jobIdentity: jobIdentity
+    outputDatasets:  outputDatasets
+}

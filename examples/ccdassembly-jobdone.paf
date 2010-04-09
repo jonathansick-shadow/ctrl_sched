@@ -1,6 +1,6 @@
 pipelineEvent:  CcdAssemblyJob
 
-# jobSuccess: True
+# jobSuccess: True    # when this is for a failure stage, set this to False
 
 # if there are no datasets entries no data-ready events will be sent 
 # by this stage.  
