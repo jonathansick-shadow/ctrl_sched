@@ -10,7 +10,7 @@ import sys
 import unittest
 import time
 
-from lsst.ctrl.events import EventSystem, EventReceiver
+from lsst.ctrl.events import EventSystem, EventReceiver, Event, CommandEvent
 
 sendevent = os.path.join(os.environ["CTRL_SCHED_DIR"], "bin", "sendevent.py")
 seargs = " -b %s -r %s -n %s -o %d %s %s %s"
@@ -53,8 +53,10 @@ class SendEventTestCase(unittest.TestCase):
         event = rcvr.receiveStatusEvent(500)
         self.assert_(event is not None,  "status event not selected on status")
 
-        rcvr = EventReceiver(self.broker, self.topic,
-                             "RUNID='%s' and STATUS='%s' and DESTINATIONID=%d" % (self.runid, "job:ready", origid))
+        selector = "%s='%s' and %s='%s' and %s=%d" % (Event.RUNID, self.runid, Event.STATUS, "job:assign", CommandEvent.DESTINATIONID, origid)
+#        selector = "DESTINATIONID = %d" % (origid)
+        print selector
+        rcvr = EventReceiver(self.broker, self.topic, selector)
         args = seargs % (self.broker, self.runid, "testPipe", origid, "assign",
                          self.topic, "testPipe")
         print sendevent+args

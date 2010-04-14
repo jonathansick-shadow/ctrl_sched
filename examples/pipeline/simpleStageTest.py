@@ -18,7 +18,7 @@ def main():
     # First create a tester.  For convenience, we use our special AreaStage
     # factory class (which is defined below) to configure the tester.  
     #
-    tester = SimpleStageTester(runID=sys.argv[1])
+    tester = SimpleStageTester(name="testPipeline", runID=sys.argv[1])
     tester.setEventBroker("lsst8.ncsa.uiuc.edu")
 
     stagePolicy = pexPolicy.Policy.createPolicy("getajob.paf")
@@ -32,9 +32,9 @@ def main():
     stagePolicy = pexPolicy.Policy.createPolicy("jobdone.paf")
     tester.addStage( JobDoneFromSliceStage(stagePolicy) )
     
-    # set the verbosity of the logger.  If the level is at least 5, you
+    # set the verbosity of the logger.  If the level is at least 5 you
     # will see debugging messages from the SimpleStageTester wrapper.
-    tester.setDebugVerbosity(5)
+    tester.setDebugVerbosity(10)
 
     clipboard = { }
     clipboard = tester.runWorker(clipboard)

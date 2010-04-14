@@ -331,6 +331,7 @@ class _DataReadyComp(object):
         for client in self.dataclients:
             if not possible:
                 break
+            self.log.log(Log.DEBUG, "completed: " + str(completed))
             possible = client.tellDataReady(possible, completed)
 
         # update the possible list for the ones we have not reported
@@ -380,6 +381,7 @@ class _JobDoneComp(_DataReadyComp):
         will also alert about ready datasets.
         """
         if clipboard and len(self.dataclients) > 0:
+            self.log.log(Log.INFO-5, "reporting the completed files")
             self.tellDataReady(clipboard)
         self.jobclient.tellDone(self.jobsuccess)
 
