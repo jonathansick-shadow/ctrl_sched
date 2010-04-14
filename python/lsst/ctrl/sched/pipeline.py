@@ -6,6 +6,7 @@ from dataset import Dataset
 import lsst.ctrl.sched.utils as utils
 from lsst.ctrl.events import EventSystem, EventReceiver
 from lsst.pex.policy import Policy, DefaultPolicyFile
+from lsst.pex.logging import Log
 
 
 class JobOfficeClient(object):
@@ -34,7 +35,7 @@ class JobOfficeClient(object):
             originatorId = self.esys.createOriginatorId()
         self.origid = originatorId
 
-    def getOriginatorId():
+    def getOriginatorId(self):
         return self.origid
 
 class GetAJobClient(JobOfficeClient):
@@ -46,24 +47,33 @@ class GetAJobClient(JobOfficeClient):
     """
 
     def __init__(self, runId, pipelineName, topic, brokerHost,
-                 brokerPort=None):
+                 logger, brokerPort=None):
         """
         create the client
         @param runId         the Run ID for the pipeline
         @param pipelineName  the logical name of the pipeline
         @param topic         the topic to be used to communicate with
                                  the JobOffice
+        @param brokerHost    the host where the event broker is running
+        @param logger        the logger to use
+        @param brokerPort    the port where the event broker is listening
         """
-        JobOfficeClient.__init__(self, runId, pipelineName, brokerHost,
+        JobOfficeClient.__init__(self, runId, pipelineName, brokerHost, 
                                  brokerPort=brokerPort)
 
         self.sender = utils.EventSender(self.runId, topic, brokerHost)
-        select = "RUNID='%s' and STATUS='%s:%s'" % \
-                 (runId, topic, "ready")
+        self.logger = logger
+#        select = "RUNID='%s' and STATUS='job:assign'" \
+#                 % (runId)
+        select = "RUNID='%s' and DESTINATIONID=%d and STATUS='job:assign'" \
+                 % (runId, self.getOriginatorId())
         if brokerPort:
             self.rcvr = EventReceiver(brokerHost, brokerPort, topic, select)
         else:
             self.rcvr = EventReceiver(brokerHost, topic, select)
+        if self.logger:
+            self.logger.log(Log.INFO-2, "selecting event with \"%s\" on %s" %
+                            (select, topic))
 
     def getAssignment(self):
         """
@@ -73,17 +83,22 @@ class GetAJobClient(JobOfficeClient):
                                      2) a list of the input datasets
                                      3) a list of the expected output datasets
         """
-        event = self.rcvr.receiveStatusEvent()
+        event = self.rcvr.receiveCommandEvent()
         if not event:
-            return None
+            return (None, None, None)
 
         ps = event.getPropertySet()
+        if self.logger:
+            self.logger.log(Log.INFO-3,
+                            "Received %s event for runid=%s" %
+                            (event.getStatus(), event.getRunId()))
+            self.logger.log(Log.INFO-3, "event properties: " + str(ps.names()))
         inputs = utils.unserializeDatasetList(
-                                       ps.getArrayString("inputDatasets"))
+                                       ps.getArrayString("inputs"))
         outputs = utils.unserializeDatasetList(
-                                       ps.getArrayString("outputDatasets"))
+                                       ps.getArrayString("outputs"))
         jobds = utils.unserializeDataset(ps.getString("identity"))
-        jobid = jobs.ids.copy()
+        jobid = jobds.ids is not None and jobds.ids.copy() or {}
         if jobds.type:
             jobid["type"] = jobds.type
 
@@ -165,7 +180,7 @@ class DataReadyClient(JobOfficeClient):
                 remain.append(ds)
         
         self.dataSender.send(
-            self.sender.createDatasetEvent(self.name, report, fullsuccess))
+            self.dataSender.createDatasetEvent(self.name, report, fullsuccess))
         return remain
 
 
@@ -195,7 +210,8 @@ class JobDoneClient(JobOfficeClient):
         """
         alert the JobOffice that assigned job is done
         """
-        self.jobSender.send(createJobDoneEvent(self.name, success))
+        self.jobSender.send(self.jobSender.createJobDoneEvent(self.name,
+                                                              success))
 
 class _GetAJobComp(object):
 
@@ -219,19 +235,27 @@ class _GetAJobComp(object):
            self.policy.getString("outputKeys.inputDatasets")
         self.clipboardKeys["outputDatasets"] = \
            self.policy.getString("outputKeys.outputDatasets")
+        self.clipboardKeys["completedDatasets"] = \
+           self.policy.getString("outputKeys.completedDatasets")
+        self.log.log(Log.INFO-1, "clipboard keys: " + str(self.clipboardKeys))
 
         topic = self.policy.getString("pipelineEvent")
         self.client = GetAJobClient(self.getRun(), self.getName(), topic,
-                                    self.getEventBrokerHost())
+                                    self.getEventBrokerHost(), self.log)
         self.log.log(Log.INFO-1,
-                     "Using OriginatorId = " % self.client.getOriginatorId())
+                     "Using OriginatorId = %d" % self.client.getOriginatorId())
 
     def setAssignment(self, clipboard):
         self.client.tellReady()
+        self.log.log(Log.INFO-2, "Told JobOffice, I'm ready!")
         jobid, inputs, outputs = self.client.getAssignment()
+        if jobid is None:
+            raise RuntimeError("empty assignment from JobOffice (event timed out?)")
+        self.log.log(Log.INFO-2, "Received assignment")
         clipboard.put("originatorId", self.client.getOriginatorId())
         clipboard.put(self.clipboardKeys["inputDatasets"], inputs)
         clipboard.put(self.clipboardKeys["outputDatasets"], outputs)
+        clipboard.put(self.clipboardKeys["completedDatasets"], [])
         clipboard.put(self.clipboardKeys["jobIdentity"], jobid)
         
 
@@ -305,13 +329,13 @@ class _DataReadyComp(object):
         possible = clipboard.get(self.clipboardKeys["possibleDatasets"])
 
         for client in self.dataclients:
-            if len(possible) < 1:
+            if not possible:
                 break
             possible = client.tellDataReady(possible, completed)
 
         # update the possible list for the ones we have not reported
         # on yet.
-        clipboard.set(self.clipboardKeys["possibleDatasets"], possible)
+        clipboard.put(self.clipboardKeys["possibleDatasets"], possible)
        
 
 class DataReadyParallelProcessing(_DataReadyComp, harnessStage.ParallelProcessing):
@@ -357,7 +381,7 @@ class _JobDoneComp(_DataReadyComp):
         """
         if clipboard and len(self.dataclients) > 0:
             self.tellDataReady(clipboard)
-        self.jobclient.tellDone(self.jobSuccess)
+        self.jobclient.tellDone(self.jobsuccess)
 
 class JobDoneParallelProcessing(_JobDoneComp, harnessStage.ParallelProcessing):
     """

@@ -6,7 +6,7 @@
 localLogMode: true
 eventBrokerHost: "lsst8.ncsa.uiuc.edu" 
 logThreshold: -3
-nSlices: 
+nSlices: 1
 
 appStage: {
     name: "GetAJob"

@@ -114,6 +114,15 @@ class EventSender(object):
         """
         return _CommandEventFactory(self.runid,status,self.origid,destid,props)
 
+    def createStopEvent(self, pipelineName, destid=None, urgency=1):
+        """
+        create a Stop command event
+        @param destid    the destination ID (optional)
+        @param props     the properties to include along wiht the Event
+        """
+        props = {"pipelineName": pipelineName, "level": urgency }
+        return _CommandEventFactory(self.runid,"stop",self.origid,destid,props)
+
     def createPipelineReadyEvent(self, pipelineName):
         """
         create a candidate event for signalling that a pipeline is ready
@@ -124,7 +133,8 @@ class EventSender(object):
         return self.createStatusEvent("job:ready",
                                       {"pipelineName": pipelineName})
 
-    def createJobAssignEvent(self, pipelineName, pipelineId, datasets=None):
+    def createJobAssignEvent(self, pipelineName, pipelineId, identity=None,
+                             inputs=None, outputs=None):
         """
         create a candidate event for assigning a job to a pipeline.
 
@@ -132,11 +142,18 @@ class EventSender(object):
         """
         out = self.createCommandEvent("job:assign", pipelineId, 
                                       {"pipelineName": pipelineName})
-        if datasets:
-            if not isinstance(datasets, list):
-                datasets = [datasets]
-            for ds in datasets:
-                out.addDataset(ds)
+        if identity:
+            out.addDataset("identity", identity)
+        if inputs:
+            if not isinstance(inputs, list):
+                inputs = [inputs]
+            for ds in inputs:
+                out.addDataset("inputs", ds)
+        if inputs:
+            if not isinstance(outputs, list):
+                outputs = [outputs]
+            for ds in outputs:
+                out.addDataset("outputs", ds)
 
         return out
 
@@ -176,7 +193,7 @@ class EventSender(object):
             if not isinstance(datasets, list):
                 datasets = [datasets]
             for ds in datasets:
-                out.addDataset(ds)
+                out.addDataset("dataset", ds)
 
         return out
     
@@ -215,12 +232,12 @@ class _EventFactory(object):
         """get the value of a named property"""
         return self.props.getString(name)
 
-    def addDataset(self, ds):
+    def addDataset(self, propname, ds):
         """add a dataset to the event"""
-        self.props.add("dataset", serializeDataset(ds))
-    def getDatasets(self, ds):
+        self.props.add(propname, serializeDataset(ds))
+    def getDatasets(self, propname):
         """return the datasets attached to the event"""
-        return unserializeDatasetList(self.props.getArrayString("dataset"))
+        return unserializeDatasetList(self.props.getArrayString(propname))
 
 class _StatusEventFactory(_EventFactory):
     """

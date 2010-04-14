@@ -9,8 +9,8 @@ from lsst.pex.logging import Log, DualLog
 from lsst.ctrl.sched.utils import EventSender
 from lsst.ctrl.sched.dataset import Dataset
 
-cmdnames = "ready|assign|dataset|done"
-usage = """usage %%prog [-vqsf] [-b brokerhost] [-p brokerport] [-r runid] [-i iddelim] %s topic [pipelineName] [dataset ...]""" % cmdnames
+cmdnames = "ready|assign|dataset|done|stop"
+usage = """usage %%prog [-vqsf] [-b brokerhost] [-p brokerport] [-r runid] [-i iddelim] %s topic [dataset ...]""" % cmdnames
 
 desc = """Send a specified JobOffice-related event"""
 
@@ -37,6 +37,10 @@ cl.add_option("-f", "--tell-fail", action="store_true", default=False,
               help="when applicable, set the success flag to False")
 cl.add_option("-i", "--id-delim", action="store", dest="iddelim", default=" ",
               help="for dataset events, the delimiters look for to separate the datasets")
+cl.add_option("-j", "--job-identity", action="store", dest="identity", 
+              help="the identifiers and values that define the job being processed, in dataset format (for assign command)")
+cl.add_option("-O", "--output-datasets", action="append", dest="outputs", 
+              help="an output dataset, in dataset format; may appear multiple times (for assign command)")
 cl.add_option("-o", "--orig-id", action="store", type="long", default=0L,
               dest="origid",
               help="for assign, the originator id to send to")
@@ -77,13 +81,26 @@ def main():
     if cmd == "ready":
         ev = sender.createPipelineReadyEvent(cl.opts.name)
     elif cmd == "assign":
+        inputs = toDatasets(cl.args[2:])
+        outputs = identity = None
+        if cl.opts.outputs is not None:
+            outputs = toDatasets(cl.opts.outputs)
+        elif len(inputs) > 0:
+            outputs = inputs[-1]
+        if cl.opts.identity:
+            identity = toDatasets([cl.opts.identity])
+        elif len(inputs) > 0:
+            identity = inputs[0]
+
         ev = sender.createJobAssignEvent(cl.opts.name, cl.opts.origid,
-                                         toDatasets(cl.args[2:]))
+                                         identity, inputs, outputs)
     elif cmd == "dataset":
         ev = sender.createDatasetEvent(cl.opts.name, toDatasets(cl.args[2:]),
                                        not cl.opts.fail)
     elif cmd == "done":
         ev = sender.createJobDoneEvent(cl.opts.name, not cl.opts.fail)
+    elif cmd == "stop":
+        ev = sender.createStopEvent(cl.opts.name, cl.opts.origid)
     else:
         fail("no command!")
 

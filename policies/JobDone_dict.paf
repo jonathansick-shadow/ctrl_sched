@@ -22,6 +22,9 @@ definitions: {
                      the pipeline, then this should be set to true.  If it
                      is part of a failure stage, then the value should be
                      false."
+      minOccurs:  0
+      maxOccurs:  1
+      default:    true
    }
 
    datasets:  {

@@ -6,6 +6,7 @@ import lsst.pex.harness.stage as harnessStage
 from lsst.pex.logging import Log
 from lsst.ctrl.sched.dataset import Dataset
 
+import os, sys, time
 
 class FakeInput(harnessStage.ParallelProcessing):
     """
@@ -21,8 +22,11 @@ class FakeInput(harnessStage.ParallelProcessing):
 
     def process(self, clipboard):
         inputs = clipboard.get(self.inputDatasetKey)
-        for ds in inputs:
-            self.mylog.log(Log.INFO, "Loading " + ds.toString())
+        if inputs:
+            for ds in inputs:
+                self.mylog.log(Log.INFO, "Loading " + ds.toString())
+        else:
+            self.mylog.log(Log.WARN, "No input datasets given")
 
 class FakeInputStage(harnessStage.Stage):
     parallelClass = FakeInput
@@ -49,7 +53,7 @@ class FakeProcessing(harnessStage.ParallelProcessing):
         time.sleep(self.sleeptime)
 
         self.visitCount += 1
-        if self.visitCount == self.failOnVisit+1:
+        if self.visitCount == self.failOnVisitN:
             raise RuntimeError("testing failure stage")
 
 class FakeProcessingStage(harnessStage.Stage):
@@ -76,11 +80,15 @@ class FakeOutput(harnessStage.ParallelProcessing):
         # this implementation will pretend to write out all of the
         # expected datasets.  It will also put each dataset written
         # out into the outputDatasets list.
-        for ds in expected:
-            self.mylog.log(Log.INFO, "Writing out " + ds.toString())
-            outputds.append(ds)
+        if expected:
+            for ds in expected:
+                self.mylog.log(Log.INFO, "Writing out " + ds.toString())
+                outputds.append(ds)
+        else:
+            self.log.log(Log.WARN, "No expected datasets on clipboard")
+            
 
-        clipboard.set(self.outputDatasetsKey, outputds)
+        clipboard.put(self.outputDatasetsKey, outputds)
 
 class FakeOutputStage(harnessStage.Stage):
     parallelClass = FakeOutput

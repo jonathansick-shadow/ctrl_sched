@@ -458,9 +458,9 @@ class _BaseJobOffice(JobOffice):
         """
         props = PropertySet()
         for ds in job.getInputDatasets():
-            props.add("input", serializePolicy(ds.toPolicy()))
+            props.add("inputs", serializePolicy(ds.toPolicy()))
         for ds in job.getOutputDatasets():
-            props.add("output", serializePolicy(ds.toPolicy()))
+            props.add("outputs", serializePolicy(ds.toPolicy()))
         props.set("identity", serializePolicy(job.getJobIdentity().toPolicy()))
         props.set("STATUS", "job:process")
         props.set("name", job.getName())
