@@ -3,7 +3,7 @@ The abstract BlackboardItem class and implementations
 """
 
 from lsst.ctrl.sched.base import _AbstractBase
-from lsst.ctrl.sched.dataset import Dataset
+from lsst.ctrl.sched import Dataset
 
 from lsst.pex.policy import Policy, PAFWriter
 import pdb
@@ -477,7 +477,8 @@ class JobItem(BasicBlackboardItem):
         BasicBlackboardItem.__init__(self, impl, name)
         if inputs:  self._setDatasets(impl, self.INPUT, inputs)
         if outputs:  self._setDatasets(impl, self.OUTPUT, outputs)
-        impl._setProperty(self.JOBIDENTITY, jobDataset.toPolicy())
+        if jobDataset:
+            impl._setProperty(self.JOBIDENTITY, jobDataset.toPolicy())
 
         self.triggerHandler = triggerHandler
 

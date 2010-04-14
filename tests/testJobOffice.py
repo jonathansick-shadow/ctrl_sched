@@ -112,13 +112,13 @@ class DataTriggeredJobOfficeTestCase(unittest.TestCase):
         job = JobItem.createItem(ods, "ccdassembly", dss, ods)
         jev = self.joboffice.makeJobCommandEvent(job, 9993252, "testing")
 
-        self.assertEquals(jev.getStatus(), "job:process")
+        self.assertEquals(jev.getStatus(), "job:assign")
         self.assertEquals(jev.getRunId(), "testing")
         self.assertEquals(jev.getDestinationId(), 9993252)
-        self.assert_(jev.getPropertySet().exists("input"))
-        self.assert_(jev.getPropertySet().exists("output"))
+        self.assert_(jev.getPropertySet().exists("inputs"))
+        self.assert_(jev.getPropertySet().exists("outputs"))
 
-        dodss = jev.getPropertySet().getArrayString("input")
+        dodss = jev.getPropertySet().getArrayString("inputs")
         self.assertEquals(len(dodss), 5)
         i = 5
         for ds in dodss:
@@ -241,6 +241,7 @@ class DataTriggeredJobOfficeTestCase(unittest.TestCase):
           self.assertEquals(self.joboffice.bb.queues.jobsAvailable.length(),1)
           self.assertEquals(self.joboffice.bb.queues.jobsInProgress.length(),0)
 
+        # pdb.set_trace()
         self.joboffice.allocateJobs()
 
         with self.joboffice.bb.queues:

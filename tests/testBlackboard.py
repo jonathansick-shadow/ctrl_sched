@@ -58,7 +58,7 @@ class BlackboardTestCase(unittest.TestCase):
 
     def _jobItem(self, name, type=""):
         ds = Dataset(type)
-        return bb.JobItem.createItem(name, ds)
+        return bb.JobItem.createItem(ds, name)
 
     def testUnprotectedUpdates(self):
         item = self._datasetItem("v1234.fits", "raw")

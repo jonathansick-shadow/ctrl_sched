@@ -85,14 +85,14 @@ class EventSenderTestCase(unittest.TestCase):
         event = ev.create()
         self.assertEquals(event.getStatus(), status)
         origid = event.getOriginatorId()
-        self.assert_(origid > 0)
+        self.assert_(origid != 0)
         self.assertEquals(event.getPropertySet().getString("pipelineName"),
                           "ccdAssembly")
 
         ds = self._makeDataset()
-        ev.addDataset(ds)
+        ev.addDataset("inputs", ds)
         ds.ids["ampid"] += 1
-        ev.addDataset(ds)
+        ev.addDataset("inputs", ds)
 
         self.sender.send(ev.create())
         event = self.rcvr.receiveStatusEvent(1000)
@@ -102,7 +102,7 @@ class EventSenderTestCase(unittest.TestCase):
                           "ccdAssembly")
         self.assertEquals(event.getOriginatorId(), origid)
         
-        dslist = event.getPropertySet().getArrayString("dataset")
+        dslist = event.getPropertySet().getArrayString("inputs")
         if dslist is not None:
             dslist = utils.unserializeDatasetList(dslist)
         self.assert_(dslist is not None)
@@ -125,14 +125,14 @@ class EventSenderTestCase(unittest.TestCase):
         self.assertEquals(event.getStatus(), status)
         self.assertEquals(event.getDestinationId(), dest)
         origid = event.getOriginatorId()
-        self.assert_(origid > 0)
+        self.assert_(origid != 0)
         self.assertEquals(event.getPropertySet().getString("pipelineName"),
                           "ccdAssembly")
 
         ds = self._makeDataset()
-        ev.addDataset(ds)
+        ev.addDataset("inputs", ds)
         ds.ids["ampid"] += 1
-        ev.addDataset(ds)
+        ev.addDataset("inputs", ds)
 
         self.sender.send(ev.create())
         event = self.rcvr.receiveCommandEvent(1000)
@@ -143,7 +143,7 @@ class EventSenderTestCase(unittest.TestCase):
         self.assertEquals(event.getOriginatorId(), origid)
         self.assertEquals(event.getDestinationId(), dest)
         
-        dslist = event.getPropertySet().getArrayString("dataset")
+        dslist = event.getPropertySet().getArrayString("inputs")
         if dslist is not None:
             dslist = utils.unserializeDatasetList(dslist)
         self.assert_(dslist is not None)
@@ -154,7 +154,7 @@ class EventSenderTestCase(unittest.TestCase):
         ds = self._makeDataset()
         ev = self.sender.createDatasetEvent("ccdAssembly", ds)
         ds.ids["ampid"] += 1
-        ev.addDataset(ds)
+        ev.addDataset("dataset", ds)
         origid = ev.getOriginatorId()
 
         self.sender.send(ev)

@@ -462,7 +462,7 @@ class _BaseJobOffice(JobOffice):
         for ds in job.getOutputDatasets():
             props.add("outputs", serializePolicy(ds.toPolicy()))
         props.set("identity", serializePolicy(job.getJobIdentity().toPolicy()))
-        props.set("STATUS", "job:process")
+        props.set("STATUS", "job:assign")
         props.set("name", job.getName())
         return CommandEvent(runId, self.originatorId, pipeline, props)
         
