@@ -3,3 +3,4 @@ setupRequired(pex_logging >= 3.3.4)
 setupRequired(pex_harness >= 3.4)
 
 envPrepend(PYTHONPATH, ${PRODUCT_DIR}/python)
+envPrepend(PATH, ${PRODUCT_DIR}/bin)

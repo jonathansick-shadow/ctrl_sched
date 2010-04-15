@@ -21,14 +21,14 @@ To run as a SimpleStageTester script, it helps to have two shells
 pipeline and one for sending events.  In the first shell, start the
 pipeline by typing:
 
-   python simpleStageTest.py runid
+   python simpleStageTest.py runid5
 
 where runid is an arbitrary string to serve as the Run Identifier.
 Note the messages that get printed as we will refer to them below.
 In the next shell, you can send an event that assigns a job to the
 pipeline using sendevent.py with the following:
 
-   sendevent.py -r runid -b lsst9 -i "..." -O "..." -O "..." \
+   sendevent.py -r runid5 -b lsst9 -i "..." -O "..." -O "..." \
       -o 999999 assign testPipeline "..." "..."
 
 where runid is the same runid as was passed to the pipeline above.
@@ -52,7 +52,7 @@ words are name=value pairs that specify the values of identifiers
 
 Thus a fully specified call to sendevent.py might be:
 
-  sendevent.py -r runid -b lsst8 -o 2374897516   \
+  sendevent.py -r runid5 -b lsst8 -o 2374897516   \
       -i "PostISR-ccd visit=13410 ccd=12 snap=0" \
       -O "PostISR-ccd visit=13410 ccd=12 snap=0" \
       assign testPipeline "PostISR visit=13410 ccd=12 snap=0 amp=03
