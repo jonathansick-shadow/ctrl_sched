@@ -7,7 +7,7 @@ import optparse, traceback
 from lsst.pex.logging import Log, DualLog
 
 from lsst.ctrl.sched.utils import EventSender
-from lsst.ctrl.sched.dataset import Dataset
+from lsst.ctrl.sched import Dataset
 
 cmdnames = "ready|assign|dataset|done|stop"
 usage = """usage %%prog [-vqsf] [-b brokerhost] [-p brokerport] [-r runid] [-i iddelim] %s topic [dataset ...]""" % cmdnames
