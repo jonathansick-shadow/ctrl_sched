@@ -6,7 +6,7 @@ from __future__ import with_statement
 
 import lsst.ctrl.events as ev
 from lsst.daf.base import PropertySet
-from dataset import Dataset
+from lsst.ctrl.sched import Dataset
 from lsst.pex.policy import Policy, PolicyString, PAFWriter
 
 import os, time, random

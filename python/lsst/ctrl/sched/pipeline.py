@@ -2,7 +2,7 @@
 tools and stages for pipelines that interact with the JobOffice scheduler
 """
 import lsst.pex.harness.stage as harnessStage
-from dataset import Dataset
+from lsst.ctrl.sched import Dataset
 import lsst.ctrl.sched.utils as utils
 from lsst.ctrl.events import EventSystem, EventReceiver
 from lsst.pex.policy import Policy, DefaultPolicyFile
