@@ -4,7 +4,7 @@ scheduler.
 """
 import lsst.pex.harness.stage as harnessStage
 from lsst.pex.logging import Log
-from lsst.ctrl.sched.dataset import Dataset
+from lsst.ctrl.sched import Dataset
 
 import os, sys, time
 

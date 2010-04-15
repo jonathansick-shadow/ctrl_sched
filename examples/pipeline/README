@@ -1,0 +1,70 @@
+testPipeline
+
+This demonstrates the use of the joboffice pipeline stages.  In can
+either be run via a SimpleStageTester script (simpleStageTest.py) or
+as a pipeline in the harness.  In either case, one must arrange to
+have job assignment events sent to it.  This can be done either by
+first launching a joboffice daemon or by sending the events explictly
+with the sendevent.py script (in the bin directory).
+
+This directory ($CTRL_SCHED_DIR/examples/pipeline) contains some Stage
+implementations used in the test pipeline and which need to be in your
+path.  To accomplish this, change into this directory and type:
+
+   setup -r .
+
+Running the SimpleStageTester script
+------------------------------------
+
+To run as a SimpleStageTester script, it helps to have two shells
+(windows) open and setup for this package: one for launching the
+pipeline and one for sending events.  In the first shell, start the
+pipeline by typing:
+
+   python simpleStageTest.py runid
+
+where runid is an arbitrary string to serve as the Run Identifier.
+Note the messages that get printed as we will refer to them below.
+In the next shell, you can send an event that assigns a job to the
+pipeline using sendevent.py withthe following:
+
+   sendevent.py -r runid -b lsst9 -i "..." -O "..." -O "..." \
+      -o 999999 assign testPipeline "..." "..."
+
+where runid is the same runid as was passed to the pipeline above.
+The argument "assign" sends a job assignment event, and "testPipeline"
+is the event the pipeline is listening to (the value of
+"pipelineEvent" in the getajob.paf policy file).  
+
+The number passed to the -o option is important: it's a unique
+identifier for a pipeline instance.  The identifier for our pipeline
+is spit out in the messages from the pipelne when you start it up.
+Look for "originatorId = ..."; the number there is the one you want to
+use with the -o option.  
+
+A listing of input datasets are given as arguments following the event
+topic argument.  The -i and -O options provide the jobIdentity and
+output datasets.  All three types of values have the same format.  The
+value in general is a list of space-delimited words, so it needs to be
+enclosed in quotes.  The first word is a dataset type; the following
+words are name=value pairs that specify the values of identifiers
+(e.g. "cal visit=97665 ccd=10 amp=02").  
+
+When the pipeline receives the event, it will proceed through its
+stages, spitting out more messages.  
+
+Sometime its helpful to watch the events go by in full; the
+showevents.py script does this.  Run this command (in a third shell)
+to show all the events relevent to this example:
+
+   showevents.py -w 2 lsst8 testPipeline CcdAssemblyJob triggerShutdownEvent
+
+Ctrl-C will exit out the monitoring.  
+
+Running the Pipeline via the Harness
+------------------------------------
+
+Alternatively, the example pipeline can be run inside the pipeline
+harness.  
+
+    
