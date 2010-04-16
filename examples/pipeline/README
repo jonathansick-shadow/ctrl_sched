@@ -23,7 +23,7 @@ pipeline by typing:
 
    python simpleStageTest.py runid5
 
-where runid is an arbitrary string to serve as the Run Identifier.
+where runid5 is an arbitrary string to serve as the Run Identifier.
 Note the messages that get printed as we will refer to them below.
 In the next shell, you can send an event that assigns a job to the
 pipeline using sendevent.py with the following:
@@ -75,4 +75,11 @@ Running the Pipeline via the Harness
 Alternatively, the example pipeline can be run inside the pipeline
 harness.  
 
-    
+    launchPipeline.py -L debug testPipeline.paf runid5
+
+where testPipeline.paf is the pipelne policy file and runid5 is the
+run identifier.  
+
+Like with simpleStageTest.py, it will pause and wait for an event,
+which you can send via showevents.py as done above.  Alternatively,
+you can run the joboffice for this pipeline.  
