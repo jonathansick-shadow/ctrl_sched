@@ -13,6 +13,8 @@ path.  To accomplish this, change into this directory and type:
 
    setup -r .
 
+(This can be safely undone by typing "unsetup ctrl_sched_pipeline".)
+
 Running the SimpleStageTester script
 ------------------------------------
 
@@ -28,19 +30,20 @@ Note the messages that get printed as we will refer to them below.
 In the next shell, you can send an event that assigns a job to the
 pipeline using sendevent.py with the following:
 
-   sendevent.py -r runid5 -b lsst9 -i "..." -O "..." -O "..." \
-      -o 999999 assign testPipeline "..." "..."
+   sendevent.py -r runid5 -b lsst9 -i "<ds>" -O "<ds>" -O "<ds>" \
+      assign testPipeline "<ds>" "<ds>" -o <num>
 
-where runid is the same runid as was passed to the pipeline above.
+where runid5 is the same runid as was passed to the pipeline above.
 The argument "assign" sends a job assignment event, and "testPipeline"
 is the event the pipeline is listening to (the value of
-"pipelineEvent" in the getajob.paf policy file).  
+"pipelineEvent" in the getajob.paf policy file).  <num> is an
+identifier, and <ds> is a dataset description (both described below)
 
-The number passed to the -o option is important: it's a unique
+The number, <num>, passed to the -o option is important: it's a unique
 identifier for a pipeline instance.  The identifier for our pipeline
 is spit out in the messages from the pipelne when you start it up.
-Look for "originatorId = ..."; the number there is the one you want to
-use with the -o option.  
+Look for "Using OriginatorId = ..."; the number there is the one you
+want to use with the -o option.  
 
 A listing of input datasets are given as arguments following the event
 topic argument.  The -i and -O options provide the jobIdentity and
@@ -82,4 +85,4 @@ run identifier.
 
 Like with simpleStageTest.py, it will pause and wait for an event,
 which you can send via showevents.py as done above.  Alternatively,
-you can run the joboffice for this pipeline.  
+you can run the joboffice for this pipeline...
