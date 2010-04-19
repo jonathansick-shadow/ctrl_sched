@@ -55,11 +55,11 @@ words are name=value pairs that specify the values of identifiers
 
 Thus a fully specified call to sendevent.py might be:
 
-  sendevent.py -r runid5 -b lsst8 -o 2374897516   \
+  sendevent.py -r runid5 -b lsst8 \
       -i "PostISR-ccd visit=13410 ccd=12 snap=0" \
       -O "PostISR-ccd visit=13410 ccd=12 snap=0" \
-      assign testPipeline "PostISR visit=13410 ccd=12 snap=0 amp=03
-     
+      assign testPipeline "PostISR visit=13410 ccd=12 snap=0 amp=03" \
+      -o 2374897516  
 
 When the pipeline receives the event, it will proceed through its
 stages, spitting out more messages.  
