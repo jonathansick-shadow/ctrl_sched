@@ -61,7 +61,8 @@ class GetAJobClient(JobOfficeClient):
         JobOfficeClient.__init__(self, runId, pipelineName, brokerHost, 
                                  brokerPort=brokerPort)
 
-        self.sender = utils.EventSender(self.runId, topic, brokerHost)
+        self.sender = utils.EventSender(self.runId, topic, brokerHost,
+                                        self.getOriginatorId())
         self.logger = logger
 #        select = "RUNID='%s' and STATUS='job:assign'" \
 #                 % (runId)
@@ -141,7 +142,7 @@ class DataReadyClient(JobOfficeClient):
         self.reportAllPossible = reportAllPossible
         
         self.dataSender = utils.EventSender(self.runId, topic, brokerHost,
-                                            brokerPort)
+                                            self.getOriginatorId(), brokerPort)
 
 
     def tellDataReady(self, possible, completed=None, defSuccess=False):
@@ -204,14 +205,15 @@ class JobDoneClient(JobOfficeClient):
                                  brokerHost, brokerPort=brokerPort)
                                  
         self.jobSender = utils.EventSender(self.runId, topic, brokerHost,
-                                           brokerPort)
+                                           self.getOriginatorId(), brokerPort)
 
-    def tellDone(self, success):
+    def tellDone(self, success, originatorId):
         """
         alert the JobOffice that assigned job is done
         """
         self.jobSender.send(self.jobSender.createJobDoneEvent(self.name,
-                                                              success))
+                                                              success,
+                                                              originatorId))
 
 class _GetAJobComp(object):
 
@@ -380,10 +382,14 @@ class _JobDoneComp(_DataReadyComp):
         alert the JobOffice that this pipeline completed its job.  This
         will also alert about ready datasets.
         """
-        if clipboard and len(self.dataclients) > 0:
-            self.log.log(Log.INFO-5, "reporting the completed files")
-            self.tellDataReady(clipboard)
-        self.jobclient.tellDone(self.jobsuccess)
+        origid = self.jobclient.getOriginatorId()
+        if clipboard:
+            if clipboard.has_key("originatorId"):
+                origid = clipboard.get("originatorId")
+            if len(self.dataclients) > 0:
+                self.log.log(Log.INFO-5, "reporting the completed files")
+                self.tellDataReady(clipboard)
+        self.jobclient.tellDone(self.jobsuccess, origid)
 
 class JobDoneParallelProcessing(_JobDoneComp, harnessStage.ParallelProcessing):
     """

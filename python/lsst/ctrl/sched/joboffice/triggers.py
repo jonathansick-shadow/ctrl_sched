@@ -246,9 +246,10 @@ class SimpleTrigger(Trigger):
 
         elif restrictIDs:
             # single dataset list based entirely on template
-            ds = copy.deepcopy(template)
-            ds.type = type
-            out.append(ds)
+            for type in types:
+                ds = copy.deepcopy(template)
+                ds.type = type
+                out.append(ds)
 
         return out
     

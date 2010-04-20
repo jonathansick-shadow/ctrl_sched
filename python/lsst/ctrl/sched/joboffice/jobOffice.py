@@ -86,6 +86,7 @@ class JobOffice(_AbstractBase, threading.Thread):
             self.managePipelines()
         except Exception, ex:
             self.exc = ex
+        self.log.log(Log.INFO, "job office done.")
 
     def stop(self):
         """
@@ -308,9 +309,9 @@ class _BaseJobOffice(JobOffice):
             return 0
 
         while jevent:
-            self._logJobDone(jevent)
             if self.processJobDoneEvent(jevent):
                 out += 1
+            self._logJobDone(jevent)
             jevent = self.jobDoneEvRcvr.receiveStatusEvent(self.emptyWait)
 
         trace.done()
@@ -324,8 +325,9 @@ class _BaseJobOffice(JobOffice):
                          jobevent.getHostId(),
                          (jobevent.getPropertySet().getBool("success") and
                           "successfully") or "with failure"))
-        except:
-            self._debug("logging error on " + jobevent.getStatus())
+        except Exception, ex:
+            self.log.log(Log.WARN, "logging error on " + jobevent.getStatus()
+                         + ": " + str(ex))
 
     def _debug(self, msg, data=None):
         self._log(VERB2, msg, data)
@@ -336,7 +338,10 @@ class _BaseJobOffice(JobOffice):
         if data is None:
             self.log.log(level, msg)
         else:
-            self.log.log(level, msg % data)
+            try:
+                self.log.log(level, msg % data)
+            except Exception, ex:
+                self.log.log(Log.WARN, "Trouble logging: " + msg + " % " + str(data))
 
     def _trace(self, where, lev=TRACE):
         out = TracingLog(self.log, where, lev)
@@ -391,9 +396,11 @@ class _BaseJobOffice(JobOffice):
 
     def _logDataEvent(self, dataevent):
         try: 
-            self._debug("%s dataset(s) ready", dataevent.getTopicName())
-        except:
-            self._debug("logging error on " + dataevent.getStatus())
+            self._log(VERB3, "%s dataset(s) ready", dataevent.getTopic())
+        except Exception, ex:
+            self.log.log(Log.WARN, "logging error on " + dataevent.getStatus()
+                         + ": " + str(ex))
+                         
         
     def receiveAnyDataEvent(self, timeout):
         if not self.dataEvRcvrs:
@@ -497,8 +504,9 @@ class _BaseJobOffice(JobOffice):
                         (pipeevent.getStatus(),
                          pipeevent.getPropertySet().getString("pipelineName"),
                          pipeevent.getHostId()))
-        except:
-            self._debug("logging error on " + pipeevent.getStatus())
+        except Exception, ex:
+            self.log.log(Log.WARN, "logging error on " + pipeevent.getStatus()
+                         + ": " + str(ex))
             
 
     def toPipelineQueueItem(self, pevent):

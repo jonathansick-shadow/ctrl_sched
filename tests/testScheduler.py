@@ -86,7 +86,8 @@ class DataTriggeredSchedulerTestCase(unittest.TestCase):
         spolicy = policy.getPolicy("schedule")
         self.sched = DataTriggeredScheduler(self.bb, spolicy)
 
-        ds = Dataset("PostISR", visitid=88, ampid=15)
+        # pdb.set_trace()
+        ds = Dataset("PostISR", visitid=88, ccdid=22, snapid=0, ampid=15)
         self.sched.processDataset(ds)
 
         with self.bb.queues:
@@ -94,11 +95,10 @@ class DataTriggeredSchedulerTestCase(unittest.TestCase):
             self.assertEquals(self.bb.queues.jobsPossible.length(), 1)
             job = self.bb.queues.jobsPossible.get(0)
             self.assertEquals(job.getName(), "Job-1")
-            # pdb.set_trace()
             self.assertEquals(job.triggerHandler.getNeededDatasetCount(), 15)
             self.assertEquals(self.sched.nameNumber, 2)
     
-        ds = Dataset("PostISR", visitid=95, ampid=15)
+        ds = Dataset("PostISR", visitid=95, ccdid=22, snapid=0, ampid=15)
         self.sched.processDataset(ds)
 
         with self.bb.queues:
@@ -112,7 +112,7 @@ class DataTriggeredSchedulerTestCase(unittest.TestCase):
             self.assertEquals(inputs[0].type, "PostISR")
             self.assertEquals(self.sched.nameNumber, 3)
 
-        ds = Dataset("PostISR", visitid=88, ampid=14)
+        ds = Dataset("PostISR", visitid=88, ccdid=22, snapid=0, ampid=14)
         self.sched.processDataset(ds)
 
         with self.bb.queues:
@@ -121,8 +121,9 @@ class DataTriggeredSchedulerTestCase(unittest.TestCase):
             job = self.bb.queues.jobsPossible.get(0)
             self.assertEquals(job.triggerHandler.getNeededDatasetCount(), 14)
 
+        # pdb.set_trace()
         for i in xrange(14):
-            ds = Dataset("PostISR", visitid=88, ampid=i)
+            ds = Dataset("PostISR", visitid=88, ccdid=22, snapid=0, ampid=i)
             self.sched.processDataset(ds)
 
         with self.bb.queues:

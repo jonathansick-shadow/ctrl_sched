@@ -160,7 +160,7 @@ class DataTriggeredScheduler(Scheduler):
                     inputs.extend(filt.listDatasets(recognized))
                 outputs = []
                 for filt in self.outputdata:
-                    outputs.extend(filt.listDatasets(recognized))
+                    outputs.extend(filt.listDatasets(recognized, True))
 
                 trighdlr = \
                       FilesetTriggerHandler(trigger.listDatasets(recognized))

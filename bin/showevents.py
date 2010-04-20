@@ -9,7 +9,7 @@ from lsst.pex.exceptions import LsstException
 from lsst.daf.base import PropertySet
 import lsst.ctrl.events as events
 
-usage = """Usage: %prog [-vqsd] [-V int] [-w seconds] broker topic ..."""
+usage = """Usage: %prog [-vqsd] [-V int] [-w seconds] [-r runid] broker topic ..."""
 
 desc = """listen for and print events and their properties."""
 
@@ -18,6 +18,8 @@ run.addAllVerbosityOptions(cl, "V")
 cl.add_option("-w", "--wait-time", action="store", type="int", default=10, 
               dest="sleep", metavar="seconds",
               help="seconds to sleep when no events available (def: 10)")
+cl.add_option("-r", "--runid", action="store", default=None, 
+              dest="runid", help="restrict events to those with this Run ID")
 
 logger = Log(Log.getDefaultLog(), "showEvents")
 VERB = logger.INFO-2
@@ -31,7 +33,7 @@ def main():
         Log.getDefaultLog().setThreshold(
             run.verbosity2threshold(cl.opts.verbosity, 0))
 
-        showEvents(cl.args[0], cl.args[1:], cl.opts.sleep)
+        showEvents(cl.args[0], cl.args[1:], cl.opts.runid, cl.opts.sleep)
 
     except run.UsageError, e:
         print >> sys.stderr, "%s: %s" % (cl.get_prog_name(), e)
@@ -41,7 +43,7 @@ def main():
         traceback.print_exc(file=sys.stderr)
         sys.exit(2)
 
-def showEvents(broker, topics, sleep=10):
+def showEvents(broker, topics, runid=None, sleep=10):
     """
     listen for and print events and their properties
     @param broker   the host where the event broker is running
@@ -54,14 +56,21 @@ def showEvents(broker, topics, sleep=10):
 
     logger.log(VERB, "Watching for events: " + ", ".join(topics))
 
-    eventRcvrs = makeReceivers(broker, topics)
+    eventRcvrs = makeReceivers(broker, topics, runid)
     listen(eventRcvrs, sleep)
 
-def makeReceivers(broker, topics):
+def makeReceivers(broker, topics, runid=None):
 
     out = []
+    select = None
+    if runid:
+        select = "RUNID = '%s'" % runid
     for topic in topics:
-        out.append(events.EventReceiver(broker, topic))
+        if select:
+            rcvr = events.EventReceiver(broker, topic, select)
+        else:
+            rcvr = events.EventReceiver(broker, topic)
+        out.append(rcvr)
     return out
 
 def listen(receivers, sleep):

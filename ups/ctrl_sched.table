@@ -1,7 +1,7 @@
 setupRequired(pex_policy >= 3.4.4)
 setupRequired(pex_logging >= 3.3.5)
-setupRequired(pex_harness >= 3.6.1)
-setupRequired(ctrl_events >= 3.8)
+setupRequired(pex_harness >= 3.6.2)
+setupRequired(ctrl_events >= 3.9)
 
 envPrepend(PYTHONPATH, ${PRODUCT_DIR}/python)
 envPrepend(PATH, ${PRODUCT_DIR}/bin)

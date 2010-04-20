@@ -61,21 +61,32 @@ def main():
                                              defpolf.getRepositoryPath()))
     name = policy.getString("name")
 
+    
+    # set job office root directory
+    if not os.path.isabs(cl.opts.rootdir):
+        cl.opts.rootdir = os.path.abspath(cl.opts.rootdir)
+    persistdir = os.path.join(cl.opts.rootdir, name)
+    if policy.exists("persist.dir"):
+        persistdir = policy.get("persist.dir") % \
+                     {"schedroot": cl.opts.rootdir, "name": name }
+
     # create the logger(s)
     logfile = cl.opts.logfile
     if not logfile:
-        logdir = os.path.join(cl.opts.rootdir, name)
-        if policy.exists("persist.dir"):
-            logdir = policy.get("persist.dir") % \
-                     {"schedroot": cl.opts.rootdir, "name": name }
-        logfile = os.path.join(logdir, "joboffice.log")
+        logfile = os.path.join(persistdir, "joboffice.log")
     if not os.path.exists(logfile):
         if not os.path.exists(os.path.dirname(logfile)):
             os.makedirs(os.path.dirname(logfile))
     
-    screenvol = cl.opts.toscreen and Log.DEBUG or Log.FATAL+1
-    ofclogger = DualLog(logfile, Log.DEBUG, screenvol)
+    if not cl.opts.asdaemon or cl.opts.toscreen:
+        ofclogger = DualLog(logfile, Log.DEBUG, Log.DEBUG, False)
+        # logging bug workaround
+        ofclogger.setScreenVerbose(False)
+    else:
+        ofclogger = Log()
+        ofclogger.addDestination(logfile, Log.DEBUG)
     ofclogger.setThreshold(run.verbosity2threshold(cl.opts.logverb, 0))
+    ofclogger.log(-2,"office threshold: %i" % ofclogger.getThreshold())
 
     try:
         # create the JobOffice instance
@@ -95,13 +106,15 @@ def main():
             if cl.opts.toscreen:
                 pid = os.fork()
             else:
-                pid, fd = os.forkpty()
+                pid = daemon_fork(persistdir)
+#                pid = os.fork()
+#                pid, fd = os.forkpty()
 
             if not pid:
                 # in child
                 office.run()
-                if self.exc:
-                    logger.log(Log.FATAL, str(office.exc))
+                if office.exc:
+                    ofclogger.log(Log.FATAL, str(office.exc))
                     sys.exit(1)
             else:
                 logger.log(Log.DEBUG, "daemon launched.")
@@ -111,8 +124,9 @@ def main():
                 time.sleep(1.0)
                 if not office.isAlive():
                     if office.exc:
-                        logger.log(Log.FATAL, str(office.exc))
-                        sys.exit(1)
+                        raise office.exc
+                        # logger.log(Log.FATAL, str(office.exc))
+                        # sys.exit(1)
                     else:
                         logger.log(Log.WARN, "Exiting sooner than expected")
                 while True:
@@ -145,6 +159,40 @@ def main():
             office.stop()
             office.join(30)
         sys.exit(1)
+
+def daemon_fork(persistdir):
+    # based on section 6.7, Python Cookbook; using double-fork technique
+    try:
+        pid = os.fork()
+        if pid > 0:
+            # first parent returns to exit by caller
+            return pid
+    except OSError, ex:
+        raise RuntimeError("Failed to launch daemon: first fork failed: " +
+                           ex.strerror)
+
+    # Decouple from parent environment
+    os.chdir("/")
+    os.setsid()
+    # os.umask(0)
+
+    # Do 2nd fork
+    try:
+        pid = os.fork()
+        if pid > 0:
+            pidf = open(os.path.join(persistdir, "joboffice.pid"), 'w')
+            try:
+                print >> pidf, "%i" % pid
+            finally:
+                pidf.close()
+            # Exit from 2nd parent
+            os._exit(0)
+    except OSError, ex:
+        raise RuntimeError("Failed to launch daemon: second fork failed: " +
+                           ex.strerror)
+
+    return pid
+    
 
 def fail(msg):
     logger.log(Log.FATAL, msg)

@@ -72,18 +72,22 @@ class EventSender(object):
     the working JobOffice process.
     """
 
-    def __init__(self, runid, topic, brokerhost, brokerport=0):
+    def __init__(self, runid, topic, brokerhost, originatorId=None,
+                 brokerport=0):
         """
         create a sender that will send events to a given broker on a given
         topic.
         @param runid       the Run ID to send in events
         @param topic       the event topic
         @param brokerhost  the hostname where the event broker is running
+        @param originatorId  the number to use as the Originator ID
         @param brokerport  the port that the broker is listening on. 
         """
         self.runid = runid
         self.esys = ev.EventSystem.getDefaultEventSystem()
-        self.origid = self.esys.createOriginatorId()
+        if originatorId is None:
+            originatorId = self.esys.createOriginatorId()
+        self.origid = originatorId
         if brokerport and brokerport > 0:
             self.trxr = ev.EventTransmitter(brokerhost, brokerport, topic)
         else:
@@ -98,21 +102,26 @@ class EventSender(object):
         else:
             self.trxr.publishEvent(event)
 
-    def createStatusEvent(self, status, props=None):
+    def createStatusEvent(self, status, props=None, originatorId=None):
         """
         create a candidate status event of a given status.
 
         This actually returns an event factory class.
         """
-        return _StatusEventFactory(self.runid, status, self.origid, props)
+        if not originatorId:
+            originatorId = self.origid
+        return _StatusEventFactory(self.runid, status, originatorId, props)
 
-    def createCommandEvent(self, status, destid, props=None):
+    def createCommandEvent(self, status, destid, props=None,
+                           originatorId=None):
         """
         create a candidate command event of a given status.
 
         This actually returns an event factory class.
         """
-        return _CommandEventFactory(self.runid,status,self.origid,destid,props)
+        if not originatorId:
+            originatorId = self.origid
+        return _CommandEventFactory(self.runid,status,originatorId,destid,props)
 
     def createStopEvent(self, pipelineName, destid=None, urgency=1):
         """
@@ -123,7 +132,7 @@ class EventSender(object):
         props = {"pipelineName": pipelineName, "level": urgency }
         return _CommandEventFactory(self.runid,"stop",self.origid,destid,props)
 
-    def createPipelineReadyEvent(self, pipelineName):
+    def createPipelineReadyEvent(self, pipelineName, originatorId=None):
         """
         create a candidate event for signalling that a pipeline is ready
         for a job.
@@ -131,17 +140,19 @@ class EventSender(object):
         This actually returns an event factory class.
         """
         return self.createStatusEvent("job:ready",
-                                      {"pipelineName": pipelineName})
+                                      {"pipelineName": pipelineName},
+                                      originatorId)
 
     def createJobAssignEvent(self, pipelineName, pipelineId, identity=None,
-                             inputs=None, outputs=None):
+                             inputs=None, outputs=None, originatorId=None):
         """
         create a candidate event for assigning a job to a pipeline.
 
         This actually returns an event factory class.
         """
         out = self.createCommandEvent("job:assign", pipelineId, 
-                                      {"pipelineName": pipelineName})
+                                      {"pipelineName": pipelineName},
+                                      originatorId)
         if identity:
             out.addDataset("identity", identity)
         if inputs:
@@ -157,7 +168,7 @@ class EventSender(object):
 
         return out
 
-    def createJobAcceptEvent(self, pipelineName):
+    def createJobAcceptEvent(self, pipelineName, originatorId=None):
         """
         create a candidate event for signalling that a pipeline is ready
         for a job.
@@ -165,9 +176,10 @@ class EventSender(object):
         This actually returns an event factory class.
         """
         return self.createStatusEvent("job:accepted",
-                                      {"pipelineName": pipelineName})
+                                      {"pipelineName": pipelineName},
+                                      originatorId)
 
-    def createJobDoneEvent(self, pipelineName, success=True):
+    def createJobDoneEvent(self, pipelineName, success=True,originatorId=None):
         """
         create a candidate event for signalling that a pipeline is ready
         for a job.
@@ -176,9 +188,11 @@ class EventSender(object):
         """
         return self.createStatusEvent("job:done",
                                       {"pipelineName": pipelineName,
-                                       "success": success            })
+                                       "success": success            },
+                                      originatorId)
 
-    def createDatasetEvent(self, pipelineName, datasets=None, success=True):
+    def createDatasetEvent(self, pipelineName, datasets=None, success=True,
+                           originatorId=None):
         """
         create a candidate event for signalling that a pipeline is ready
         for a job.
@@ -187,7 +201,8 @@ class EventSender(object):
         """
         out = self.createStatusEvent("available",
                                      {"pipelineName": pipelineName,
-                                      "success": success            })
+                                      "success": success            },
+                                     originatorId)
 
         if datasets:
             if not isinstance(datasets, list):

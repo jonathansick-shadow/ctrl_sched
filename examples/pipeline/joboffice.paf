@@ -35,7 +35,7 @@ listen:  {
     # set in the pipeline's get-a-job and job-done stage policies 
     # (e.g. getajob.paf and jobdone.paf, respectively).
     # 
-    pipelineEvent:       CcdAssemblyJob
+    pipelineEvent:       testPipeline
 
     # the event that this JobOffice will use to receive an event to 
     # shut itself down.
