@@ -135,7 +135,7 @@ class _BaseJobOffice(JobOffice):
     """
 
     def __init__(self, rootdir, policy=None, defPolicyFile=None, log=None, 
-                 runId=None, brokerHost=None, brokerPort=None,
+                 runId=None, brokerHost=None, brokerPort=None, forDaemon=False,
                  fromSubclass=False):
         """
         create the JobOffice
@@ -162,6 +162,13 @@ class _BaseJobOffice(JobOffice):
                                  If None (default), the port given in the
                                  policy is used.  This parameter is for
                                  carrying an override from the command line.
+        @param forDaemon      if true, the creation of the Event channels will
+                                 be delayed until run() is called.  This allows
+                                 the caller to fork as needed without losing
+                                 the connections with the event broker.  This
+                                 also means that some public functions (other
+                                 than run() and start()) will not work
+                                 properly until ensureReady() is called.  
         @param fromSubclass   the flag indicating that this constructor is
                                  being properly called.  Calls to this
                                  constructor from a subclass constructor should
@@ -212,9 +219,22 @@ class _BaseJobOffice(JobOffice):
         if not self.brokerHost and (not self.brokerPort or self.brokerPort > 0):
             self.brokerHost = self.policy.get("listen.brokerHostName")
 
+        self.dataEvRcvrs       = None
+        self.jobReadyEvRcvr    = None
+        self.jobDoneEvRcvr     = None
+        self.jobAcceptedEvRcvr = None
+        self.jobAssignEvTrx    = None
+        if not forDaemon:
+            self._setEventPipes()
+
+    def ensureReady(self):
+        if self.dataEvRcvrs is None:
+            self._setEventPipes()
+
+    def _setEventPipes(self):
         select = ""
-        if runId:
-            select = "RUNID='%s'" % runId
+        if self.runId:
+            select = "RUNID='%s'" % self.runId
             
         if self.brokerPort is None:
             self.dataEvRcvrs = []
@@ -254,6 +274,7 @@ class _BaseJobOffice(JobOffice):
             self.jobAssignEvTrx = EventTransmitter(self.brokerHost,
                                                    self.brokerPort,
                                                    self.jobTopic)
+
             
     
     def managePipelines(self, maxIterations=None):
@@ -267,6 +288,8 @@ class _BaseJobOffice(JobOffice):
                                   (default), this function will not exit
                                   until the stop flag is set.
         """
+        self.ensureReady()
+        
         i = 0
         max = maxIterations or 1
         while i < max:
@@ -522,7 +545,7 @@ class DataTriggeredJobOffice(_BaseJobOffice):
     """
     
     def __init__(self, rootdir, policy=None, log=None, runId=None, 
-                 brokerHost=None, brokerPort=None):
+                 brokerHost=None, brokerPort=None, forDaemon=False):
         """
         create a JobOffice that is triggered by the appearence of data
         that matched filters specified in the policy file.
@@ -549,12 +572,19 @@ class DataTriggeredJobOffice(_BaseJobOffice):
                                  If None (default), the port given in the
                                  policy is used.  This parameter is for
                                  carrying an override from the command line.
+        @param forDaemon      if true, the creation of the Event channels will
+                                 be delayed until run() is called.  This allows
+                                 the caller to fork as needed without losing
+                                 the connections with the event broker.  This
+                                 also means that some public functions (other
+                                 than run() and start()) will not work
+                                 properly until ensureReady() is called.  
         """
         dpolf = DefaultPolicyFile("ctrl_sched",
                                   "DataTriggeredJobOffice_dict.paf",
                                   "policies")
         _BaseJobOffice.__init__(self, rootdir, policy, dpolf, log, runId, 
-                                brokerHost, brokerPort, True)
+                                brokerHost, brokerPort, forDaemon, True)
 
         # create a scheduler based on "schedule.className"
         self.scheduler = \

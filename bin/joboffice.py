@@ -84,7 +84,7 @@ def main():
         ofclogger.setScreenVerbose(False)
     else:
         ofclogger = Log()
-        ofclogger.addDestination(logfile, Log.DEBUG)
+        ofclogger.addDestination(logfile)
     ofclogger.setThreshold(run.verbosity2threshold(cl.opts.logverb, 0))
     ofclogger.log(-2,"office threshold: %i" % ofclogger.getThreshold())
 
@@ -208,7 +208,7 @@ def createJobOffice(rootdir, policy, log, runId, brokerhost, brokerport):
              className)
 
     cls = JobOffice.classLookup[className]
-    return cls(rootdir, policy, log, runId, brokerhost, brokerport)
+    return cls(rootdir, policy, log, runId, brokerhost, brokerport, True)
 
 
 if __name__ == "__main__":
