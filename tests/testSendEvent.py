@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Tests of the Dataset class
+Tests of the sendevent.py script
 """
 from __future__ import with_statement
 

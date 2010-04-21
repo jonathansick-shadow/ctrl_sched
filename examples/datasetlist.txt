@@ -1,0 +1,37 @@
+>pause 3
+>interval 0
+PostISR visit=888 ccd=10 amp=07 snap=0
+PostISR visit=888 ccd=10 amp=08 snap=0
+>intids visit snap
+PostISR visit=888 ccd=10 amp=09 snap=0
+>intids
+PostISR visit=888 ccd=10 amp=09 snap=0
+
+# test success/fail
+>success false
+PostISR visit=888 ccd=10 amp=09 snap=0
+>success False
+PostISR visit=888 ccd=10 amp=09 snap=0
+>success true
+PostISR visit=888 ccd=10 amp=09 snap=0
+>success F
+PostISR visit=888 ccd=10 amp=09 snap=0
+>success 1
+PostISR visit=888 ccd=10 amp=09 snap=0
+>fail True
+PostISR visit=888 ccd=10 amp=09 snap=0
+>fail F
+PostISR visit=888 ccd=10 amp=09 snap=0
+
+>iddelim -
+PostISR-visit=888-ccd=10-amp=09-snap=0
+>iddelim 
+>eqdelim :
+PostISR visit:888 ccd:10 amp:09 snap:0
+>iddelim 
+
+>format %(type)s-v%(visit)i-c%(ccd)s-a%(amp)s-s%(snap)i.fits
+PostISR-v888-c10-a09-s0.fits
+PostISR-v888-c10-a09-s1.fits
+PostISR-v888-c10-a08-s0.fits
+PostISR-v888-c10-a08-s1.fits

@@ -30,7 +30,8 @@ Note the messages that get printed as we will refer to them below.
 In the next shell, you can send an event that assigns a job to the
 pipeline using sendevent.py with the following:
 
-   sendevent.py -r runid5 -b lsst9 -i "<ds>" -O "<ds>" -O "<ds>" \
+   sendevent.py -r runid5 -b lsst8.ncsa.uiuc.edu -i "<ds>" \
+      -O "<ds>" -O "<ds>" \
       assign testPipeline "<ds>" "<ds>" -o <num>
 
 where runid5 is the same runid as was passed to the pipeline above.
@@ -55,7 +56,7 @@ words are name=value pairs that specify the values of identifiers
 
 Thus a fully specified call to sendevent.py might be:
 
-  sendevent.py -r runid5 -b lsst8 \
+  sendevent.py -r runid5 -b lsst8.ncsa.uiuc.edu \
       -i "PostISR-ccd visit=13410 ccd=12 snap=0" \
       -O "PostISR-ccd visit=13410 ccd=12 snap=0" \
       assign testPipeline "PostISR visit=13410 ccd=12 snap=0 amp=03" \
@@ -68,7 +69,8 @@ Sometime its helpful to watch the events go by in full; the
 showevents.py script does this.  Run this command (in a third shell)
 to show all the events relevent to this example:
 
-   showevents.py -w 2 lsst8 testPipeline CcdAssemblyJob triggerShutdownEvent
+  showevents.py -w 2 lsst8.ncsa.uiuc.edu testPipeline CcdAssemblyJob \
+      triggerShutdownEvent
 
 Ctrl-C will exit out the monitoring.  
 
@@ -85,4 +87,24 @@ run identifier.
 
 Like with simpleStageTest.py, it will pause and wait for an event,
 which you can send via showevents.py as done above.  Alternatively,
-you can run the joboffice for this pipeline...
+you can run the joboffice for this pipeline; see next section.
+
+Driving the Pipeline with a JobOffice
+-------------------------------------
+
+To drive the pipeline with a JobOffice, you must start a JobOffice
+process via the joboffice.py script:
+
+    joboffice.py -D -L verb2 -r runid5 -b lsst8 -d . joboffice.paf
+
+The -D option causes it to run as a daemon; thus, it will return quickly 
+after starting the process.  
+
+Next launch the pipeline using launchPipeline.py as done above.  
+
+Now, to make the pipeline work, one must send events announcing the 
+availability of the input datasets.  This can be done easily with the
+announceDataset.py script:
+
+    announceDataset.py -r runid5 -b lsst8 inputDatasets.txt
+

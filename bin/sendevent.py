@@ -36,10 +36,10 @@ cl.add_option("-f", "--tell-fail", action="store_true", default=False,
               dest="fail",
               help="when applicable, set the success flag to False")
 cl.add_option("-i", "--id-delim", action="store", dest="iddelim", default=" ",
-              help="for dataset events, the delimiters look for to separate the datasets")
+              help="for dataset events, the delimiters look for to separate the dataset IDs")
 cl.add_option("-j", "--job-identity", action="store", dest="identity", 
               help="the identifiers and values that define the job being processed, in dataset format (for assign command)")
-cl.add_option("-O", "--output-datasets", action="append", dest="outputs", 
+cl.add_option("-O", "--output-dataset", action="append", dest="outputs", 
               help="an output dataset, in dataset format; may appear multiple times (for assign command)")
 cl.add_option("-o", "--orig-id", action="store", type="long", default=0L,
               dest="origid",
