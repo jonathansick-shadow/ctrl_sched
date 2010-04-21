@@ -17,7 +17,7 @@ from lsst.ctrl.sched import Dataset
 announceDataset = os.path.join(os.environ["CTRL_SCHED_DIR"], "bin",
                                "announceDataset.py")
 seargs = " -b %(broker)s -r %(runid)s -t %(topic)s"
-# seargs += " -q"
+seargs += " -q"
 
 class AnnounceTestCase(unittest.TestCase):
     def setUp(self):

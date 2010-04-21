@@ -106,5 +106,13 @@ Now, to make the pipeline work, one must send events announcing the
 availability of the input datasets.  This can be done easily with the
 announceDataset.py script:
 
-    announceDataset.py -r runid5 -b lsst8 inputDatasets.txt
+    announceDataset.py -r runid5 -b lsst8.ncsa.uiuc.edu -t PostISRAvailable 
+
+After 16 events are sent, the pipeline should run through an
+iteration.
+
+To shut down the pipeline, hit "Ctl-C" in the pipeline window.  To shut
+down Job Office process, run the following:
+
+    sendevent.py -b lsst8.ncsa.uiuc.edu -r runid5 stop JobOfficeStop
 
