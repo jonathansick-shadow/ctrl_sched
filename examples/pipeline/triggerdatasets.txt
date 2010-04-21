@@ -1,0 +1,17 @@
+>intids visit ccd amp snap
+PostISR visit=888 ccd=10 amp=7 snap=0
+PostISR visit=888 ccd=10 amp=8 snap=0
+PostISR visit=888 ccd=10 amp=9 snap=0
+PostISR visit=888 ccd=10 amp=10 snap=0
+PostISR visit=888 ccd=10 amp=11 snap=0
+PostISR visit=888 ccd=10 amp=12 snap=0
+PostISR visit=888 ccd=10 amp=13 snap=0
+PostISR visit=888 ccd=10 amp=14 snap=0
+PostISR visit=888 ccd=10 amp=15 snap=0
+PostISR visit=888 ccd=10 amp=6 snap=0
+PostISR visit=888 ccd=10 amp=5 snap=0
+PostISR visit=888 ccd=10 amp=4 snap=0
+PostISR visit=888 ccd=10 amp=3 snap=0
+PostISR visit=888 ccd=10 amp=2 snap=0
+PostISR visit=888 ccd=10 amp=1 snap=0
+PostISR visit=888 ccd=10 amp=0 snap=0
