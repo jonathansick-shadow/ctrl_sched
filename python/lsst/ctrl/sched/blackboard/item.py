@@ -460,6 +460,7 @@ class JobItem(BasicBlackboardItem):
     OUTPUT = "OUTPUT"
     PIPELINEID = "PIPELINEID"
     JOBIDENTITY = "JOBIDENTITY"
+    SUCCESS = "SUCCESS"
 
     def __init__(self, impl, jobDataset=None, name=None, inputs=None, 
                  outputs=None, triggerHandler=None):
@@ -540,6 +541,12 @@ class JobItem(BasicBlackboardItem):
 
     def getPipelineId(self):
         return _decodeId(self.getProperty(self.PIPELINEID))
+
+    def isSuccessful(self):
+        return self.getProperty(self.SUCCESS)
+
+    def markSuccessful(self, success=True):
+        self._setProperty(self.SUCCESS, success)
 
     @staticmethod
     def createItem(jobDataset, name, inputs=None, outputs=[], 

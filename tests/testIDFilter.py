@@ -37,20 +37,22 @@ class IntegerIDFilterTestCase(unittest.TestCase):
     def testNoConstraints(self, idf=None):
         if not idf:
             idf = id.IntegerIDFilter("visit")
+        self.assert_(idf.isUnconstrained())
         self.assertEquals(idf.name, "visit")
         self.assertEquals(idf.outname, "visit")
 
-        self.assert_(idf.recognize(2) is None)
-        self.assert_(idf.recognize(-1) is None)
-        self.assert_(idf.recognize("-1") is None)
-        self.assert_(idf.recognize("50") is None)
-        self.assert_(idf.recognize(3) is None)
+        self.assertEquals(idf.recognize(2), 2)
+        self.assertEquals(idf.recognize(-1), -1)
+        self.assertEquals(idf.recognize("-1"), -1)
+        self.assert_(idf.recognize("5,0") is None)
+        self.assertEquals(idf.recognize(3), 3)
         
 
     def testMin(self, idf=None):
         if not idf:
             idf = id.IntegerIDFilter("visit", 3)
         self.assertEquals(idf.name, "visit")
+        self.assert_(not idf.isUnconstrained())
 
         self.assert_(idf.recognize(2) is None)
         self.assert_(idf.recognize(-1) is None)
@@ -62,6 +64,7 @@ class IntegerIDFilterTestCase(unittest.TestCase):
         if not idf:
             idf = id.IntegerIDFilter("visit", lim=3)
         self.assertEquals(idf.name, "visit")
+        self.assert_(not idf.isUnconstrained())
 
         self.assertEquals(idf.recognize(2), 2)
         self.assertEquals(idf.recognize(-1), -1)
@@ -73,6 +76,7 @@ class IntegerIDFilterTestCase(unittest.TestCase):
         if not idf:
             idf = id.IntegerIDFilter("visit", 0, 16)
         self.assertEquals(idf.name, "visit")
+        self.assert_(not idf.isUnconstrained())
 
         self.assert_(idf.recognize(-1) is None)
         self.assert_(idf.recognize("-1") is None)
@@ -86,6 +90,7 @@ class IntegerIDFilterTestCase(unittest.TestCase):
         if not idf:
             idf = id.IntegerIDFilter("visit", values=range(16))
         self.assertEquals(idf.name, "visit")
+        self.assert_(not idf.isUnconstrained())
 
         self.assert_(idf.recognize(-1) is None)
         self.assert_(idf.recognize("-1") is None)
@@ -99,6 +104,7 @@ class IntegerIDFilterTestCase(unittest.TestCase):
         if not idf:
             idf = id.IntegerIDFilter("visit", values=[3, 6, -8])
         self.assertEquals(idf.name, "visit")
+        self.assert_(not idf.isUnconstrained())
 
         self.assert_(idf.recognize(-1) is None)
         self.assert_(idf.recognize("-1") is None)
@@ -114,6 +120,7 @@ class IntegerIDFilterTestCase(unittest.TestCase):
         if not idf:
             idf = id.IntegerIDFilter("visit", values=3)
         self.assertEquals(idf.name, "visit")
+        self.assert_(not idf.isUnconstrained())
 
         self.assert_(idf.recognize(-1) is None)
         self.assert_(idf.recognize("-1") is None)
@@ -126,6 +133,7 @@ class IntegerIDFilterTestCase(unittest.TestCase):
         if not idf:
             idf = id.IntegerIDFilter("visit", 0, 16, values=[20,25])
         self.assertEquals(idf.name, "visit")
+        self.assert_(not idf.isUnconstrained())
 
         self.assert_(idf.recognize(-1) is None)
         self.assert_(idf.recognize("-1") is None)
@@ -165,7 +173,7 @@ class IntegerIDFilterTestCase(unittest.TestCase):
         self.testNoConstraints(idf)
 
         idf = id.IDFilter.fromPolicy(p)
-        self.testNoConstraints(idf)
+        self.assert_(not isinstance(idf, id.IntegerIDFilter))
         p.set("className", "Integer")
         idf = id.IDFilter.fromPolicy(p)
         self.testNoConstraints(idf)
@@ -184,13 +192,121 @@ class IntegerIDFilterTestCase(unittest.TestCase):
         p.set("lim", 16)
         idf = id.IDFilter.fromPolicy(p)
         self.testRange(idf)
-        p.set("values", 20)
-        p.add("values", 25)
+        p.set("value", 20)
+        p.add("value", 25)
         idf = id.IDFilter.fromPolicy(p)
         self.testValues4(idf)
 
+class StringIDFilterTestCase(unittest.TestCase):
 
-__all__ = "AbstractIDFilterTestCase IntegerIDFilterTestCase".split()
+    def setUp(self):
+        pass
+    def tearDown(self):
+        pass
+
+    def testNoConstraints(self, idf=None):
+        if not idf:
+            idf = id.StringIDFilter("visit")
+        self.assert_(idf.isUnconstrained())
+        self.assertEquals(idf.name, "visit")
+        self.assertEquals(idf.outname, "visit")
+
+        self.assert_(idf.recognize(2), "2")
+        self.assert_(idf.recognize(-1), "-1")
+        self.assert_(idf.recognize("-1"), "-1")
+        self.assert_(idf.recognize("50"), "50")
+        self.assert_(idf.recognize(3), "3")
+        
+    def testValues1(self, idf=None):
+        if not idf:
+            idf = id.StringIDFilter("visit", values="3 0 15 14 4 5".split())
+        self.assertEquals(idf.name, "visit")
+
+        self.assert_(idf.recognize(-1) is None)
+        self.assert_(idf.recognize("-1") is None)
+        self.assert_(idf.recognize("50") is None)
+        self.assertEquals(idf.recognize(3), "3")
+        self.assertEquals(idf.recognize("0"), "0")
+        self.assertEquals(idf.recognize("15"), "15")
+        self.assert_(idf.recognize("16") is None)
+
+    def testValues2(self, idf=None):
+        if not idf:
+            idf = id.StringIDFilter("visit", "r 6,0 -8".split())
+        self.assertEquals(idf.name, "visit")
+
+        self.assert_(not idf.isUnconstrained())
+        self.assert_(idf.recognize(-1) is None)
+        self.assert_(idf.recognize("-1") is None)
+        self.assert_(idf.recognize("50") is None)
+        self.assertEquals(idf.recognize("r"), "r")
+        self.assert_(idf.recognize("0") is None)
+        self.assert_(idf.recognize("zub") is None)
+        self.assertEquals(idf.recognize("6,0"), "6,0")
+        self.assertEquals(idf.recognize("-8"), "-8")
+        self.assert_(idf.recognize("16") is None)
+
+    def testValues3(self, idf=None):
+        if not idf:
+            idf = id.StringIDFilter("visit", values="r")
+        self.assertEquals(idf.name, "visit")
+
+        self.assert_(not idf.isUnconstrained())
+        self.assert_(idf.recognize(-1) is None)
+        self.assert_(idf.recognize("") is None)
+        self.assert_(idf.recognize("b") is None)
+        self.assertEquals(idf.recognize("r"), "r")
+        self.assert_(idf.recognize(0) is None)
+        self.assert_(idf.recognize(15) is None)
+
+    def testAllowed(self):
+        idf = id.StringIDFilter("visit", "the quick brown".split())
+        self.assert_(idf.hasStaticValueSet())
+        self.assert_(not idf.isUnconstrained())
+
+        vals = idf.allowedValues()
+        self.assertEquals(len(vals), 3)
+        self.assertEquals(vals[0], "brown")
+        self.assertEquals(vals[1], "quick")
+        self.assertEquals(vals[2], "the")
+
+    def testBadValues(self):
+        self.assertRaises(ValueError, id.StringIDFilter, "visit", values=range(4))
+        self.assertRaises(ValueError, id.StringIDFilter, "visit", values=[3, "6", -8])
+        self.assertRaises(ValueError, id.StringIDFilter, "visit", values=6)
+
+    def testFromPolicy(self):
+        p = Policy()
+        p.set("name", "visit")
+        idf = id.IntegerIDFilter.fromPolicy(p)
+        self.testNoConstraints(idf)
+
+        idf = id.IDFilter.fromPolicy(p)
+        self.assert_(isinstance(idf, id.StringIDFilter))
+        p.set("className", "String")
+        idf = id.IDFilter.fromPolicy(p)
+        self.assert_(isinstance(idf, id.StringIDFilter))
+        self.testNoConstraints(idf)
+        p.set("className", "StringIDFilter")
+        idf = id.IDFilter.fromPolicy(p)
+        self.assert_(isinstance(idf, id.StringIDFilter))
+        self.testNoConstraints(idf)
+
+        p.set("className", "lsst.ctrl.sched.joboffice.id.StringIDFilter")
+        self.assertRaises(RuntimeError, id.IDFilter.fromPolicy, p)
+        p.set("className", "String")
+        
+        p.set("value", "-8")
+        p.add("value", "r")
+        p.add("value", "6,0")
+        idf = id.IDFilter.fromPolicy(p)
+        self.assert_(isinstance(idf, id.StringIDFilter))
+        self.testValues2(idf)
+
+
+
+
+__all__ = "AbstractIDFilterTestCase IntegerIDFilterTestCase StringIDFilterTestCase".split()
 
 if __name__ == "__main__":
     unittest.main()

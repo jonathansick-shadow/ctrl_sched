@@ -133,8 +133,10 @@ def main():
                     time.sleep(15)
                     if not office.isAlive():
                         if office.exc:
-                            logger.log(Log.FATAL, str(office.exc))
-                            sys.exit(1)
+                            traceback.print_exc(file=sys.stderr)
+                            raise office.exc
+#                            logger.log(Log.FATAL, str(office.exc))
+#                            sys.exit(1)
                         else:
                             logger.log(Log.INFO, "Exiting normally")
                             break
@@ -144,6 +146,7 @@ def main():
                 if office.isAlive():
                     office.stop()
                     office.join(30)
+                traceback.print_exc(file=sys.stderr)
                 sys.exit(1)
             except KeyboardInterrupt, ex:
                 logger.log(Log.WARN, "Keyboard Interrupt: shutting down nicely...")
@@ -158,6 +161,7 @@ def main():
         if office.isAlive():
             office.stop()
             office.join(30)
+        traceback.print_exc(file=sys.stderr)
         sys.exit(1)
 
 def daemon_fork(persistdir):

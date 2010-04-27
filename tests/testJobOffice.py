@@ -26,10 +26,10 @@ policyFile = DefaultPolicyFile("ctrl_sched", "ccdassembly-joboffice.paf",
 postisrdata = """#<?cfg paf policy ?>
 type: PostISR
 ids: {
-visit: 44291
-ccd: 3
-raft: 33
-snap: 0
+visitid: 44291
+ccdid: 3
+raftid: 33
+snapid: 0
 ampid: 5
 }
 """
@@ -80,10 +80,10 @@ class DataTriggeredJobOfficeTestCase(unittest.TestCase):
     def testDatasetFromProperty(self):
         ds = self.joboffice.datasetFromProperty(postisrdata)
         self.assertEquals(ds.type, "PostISR")
-        self.assertEquals(ds.ids["visit"], 44291)
-        self.assertEquals(ds.ids["ccd"], 3)
-        self.assertEquals(ds.ids["raft"], 33)
-        self.assertEquals(ds.ids["snap"], 0)
+        self.assertEquals(ds.ids["visitid"], 44291)
+        self.assertEquals(ds.ids["ccdid"], 3)
+        self.assertEquals(ds.ids["raftid"], 33)
+        self.assertEquals(ds.ids["snapid"], 0)
         self.assertEquals(ds.ids["ampid"], 5)
         return ds
 
@@ -107,7 +107,7 @@ class DataTriggeredJobOfficeTestCase(unittest.TestCase):
             ds = copy.deepcopy(ds)
             ds.ids["ampid"] += 1
             dss.append(ds)
-        ods = Dataset("PostISR-CCD", visit=ds.ids["visit"], ccd=ds.ids["ccd"])
+        ods = Dataset("PostISR-CCD", visit=ds.ids["visitid"], ccd=ds.ids["ccdid"])
 
         job = JobItem.createItem(ods, "ccdassembly", dss, ods)
         jev = self.joboffice.makeJobCommandEvent(job, 9993252, "testing")
@@ -125,10 +125,10 @@ class DataTriggeredJobOfficeTestCase(unittest.TestCase):
             ds = Dataset.fromPolicy(unserializePolicy(ds))
             self.assertEquals(ds.type, "PostISR")
             self.assertEquals(ds.ids["ampid"], i)
-            self.assertEquals(ds.ids["visit"], 44291)
-            self.assertEquals(ds.ids["ccd"], 3)
-            self.assertEquals(ds.ids["raft"], 33)
-            self.assertEquals(ds.ids["snap"], 0)
+            self.assertEquals(ds.ids["visitid"], 44291)
+            self.assertEquals(ds.ids["ccdid"], 3)
+            self.assertEquals(ds.ids["raftid"], 33)
+            self.assertEquals(ds.ids["snapid"], 0)
             i += 1
 
     def testProcessDataEvent(self):
@@ -171,7 +171,6 @@ class DataTriggeredJobOfficeTestCase(unittest.TestCase):
         ds = self.testDatasetFromProperty()
         ds.ids["ampid"] = 0;
         ps.set("dataset", serializePolicy(ds.toPolicy()))
-        # pdb.set_trace()
         for i in xrange(15):
             ps.set("dataset", serializePolicy(ds.toPolicy()))
             devent = StatusEvent("testing", originatorId, ps)
@@ -181,6 +180,7 @@ class DataTriggeredJobOfficeTestCase(unittest.TestCase):
             ds = copy.deepcopy(ds)
             ds.ids["ampid"] += 1
 
+        # pdb.set_trace()
         self.joboffice.processDataEvents()
         
         with self.joboffice.bb.queues:

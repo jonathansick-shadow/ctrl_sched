@@ -135,4 +135,5 @@ class Blackboard(LockProtected):
                     raise BlackboardUpdateError("Job not found in jobsInProgress: " +
                                                 job.getProperty(Props.NAME, "(unidentified)"))
                 job = self.queues.jobsInProgress.pop(index)
+                job.markSuccessful(success)
                 self.queues.jobsDone.append(job)

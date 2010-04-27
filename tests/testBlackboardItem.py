@@ -271,6 +271,24 @@ class DataProdBBItemTestCase(BasicBBItemTestCase1):
         self.assertEquals(ds.ids["visitid"], 88)
         self.assertEquals(ds.ids["ccdid"], 12)
 
+class JobItemTestCase(unittest.TestCase):
+    def setUp(self):
+        type = "CalExp"
+        path = "goob/CalExp-v88-c12.fits"
+        ccdid = 12
+        visitid = 88
+        ds = Dataset(type, path, ccdid=ccdid, visitid=visitid)
+
+        self.job = bb.JobItem.createItem(ds, "job")
+    def tearDown(self):
+        pass
+
+    def testSuccessful(self):
+        self.assert_(not self.job.isSuccessful())
+        self.job.markSuccessful()
+        self.assert_(self.job.isSuccessful())
+    
+
 class PipelineItemTestCase(unittest.TestCase):
 
     def setUp(self):

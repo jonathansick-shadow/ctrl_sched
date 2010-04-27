@@ -3,7 +3,7 @@ classes for filtering identifiers based on constraints
 """
 from __future__ import with_statement
 
-from lsst.pex.policy import Policy
+from lsst.pex.policy import Policy, DefaultPolicyFile
 from lsst.ctrl.sched.base import _AbstractBase
 
 class IDFilter(_AbstractBase):
@@ -39,6 +39,14 @@ class IDFilter(_AbstractBase):
         """
         return self.isstatic
 
+    def isUnconstrained(self):
+        """
+        return true if this identifier is not constrained to a set of
+        values.  This implies two things:  any value passed to recognize()
+        will be recognized, and allowedValues() returns an empty set.
+        """
+        self._notImplemented("isUnconstrained")
+
     def allowedValues(self):
         """
         return a list representing the complete set of values that will
@@ -65,9 +73,11 @@ class IDFilter(_AbstractBase):
 
     @staticmethod
     def fromPolicy(policy):
-        clsname = "IntegerIDFilter"
+        clsname = "StringIDFilter"
         if policy.exists("className"):
             clsname = policy.getString("className")
+        elif policy.isInt("min") or policy.isInt("lim") or policy.isInt("value"):
+            clsname = "IntegerIDFilter"
 
         cls = None
         if IDFilter.classLookup.has_key(clsname):
@@ -79,16 +89,106 @@ class IDFilter(_AbstractBase):
 
         return cls.fromPolicy(policy)
 
+class StringIDFilter(IDFilter):
+    """
+    a class for recognizing a string-typed identifier matching a set of
+    allowed values.  
+    """
+
+    def __init__(self, name, values=None, isstaticset=True):
+        """
+        create the filter
+        @param name    the name of the identifier
+        @param values  the list of allowed values.
+        @param isstaticset  a flag indicating whether these parameters should
+                         be considered a closed, static set of identifiers.
+                         While by default this is set to True, it will be 
+                         internally made False if one and only of min and lim
+                         are specified.  
+        """
+        IDFilter.__init__(self, name, fromSubclass=True)
+        self.isstatic = isstaticset
+
+        self.values = None
+        if values is not None:
+            if not isinstance(values, list):
+                values = [values]
+            self.values = filter(lambda v: v is not None, values)
+            bad = filter(lambda v: not isinstance(v, str), self.values)
+            if len(bad) > 0:
+                raise ValueError("non-string value(s): " + str(bad))
+
+        if self.isUnconstrained():
+            self.isstatic = False
+    
+    def isUnconstrained(self):
+        return not self.values
+
+    def recognize(self, id):
+        """
+        return an identifier value associated with the given input 
+        identifier or None if the input is not recognized.
+
+        This implimentation returns the input identifier (as a string) 
+        if it is recongized.
+        """
+        id = str(id)
+        if not self.values or id in self.values:
+            return id
+
+        return None
+
+    def allowedValues(self):
+        """
+        return a list representing the complete set of values that will
+        be returned by recognize() (except None).  This may raise an 
+        exception if hasStaticValueSet() returns False.
+        """
+        if not self.hasStaticValueSet():
+            raise RuntimeError("identifier set (%s) is not closed" % self.name)
+
+        out = []
+        if self.values:
+            out.extend(self.values)
+            out.sort()
+        return out
+
+    _dictionary = None
+        
+    @staticmethod
+    def fromPolicy(policy):
+        """
+        create an IntegerIDFilter from an "id" policy
+        """
+        if not StringIDFilter._dictionary:
+            pdf = DefaultPolicyFile("ctrl_sched", "StringIDFilter_dict.paf",
+                                    "policies")
+            StringIDFilter._dictionary = Policy.createPolicy(pdf)
+        p = Policy(policy, True)
+        if StringIDFilter._dictionary:
+            p.mergeDefaults(StringIDFilter._dictionary)
+
+        name = "unknown"
+        vals = None
+        if policy.exists("name"):   name = policy.getString("name")
+        if policy.exists("value"):  vals = policy.getArray("value")
+
+        return StringIDFilter(name, vals)
+
+IDFilter.classLookup["String"] = StringIDFilter
+IDFilter.classLookup["StringIDFilter"] = StringIDFilter
+
 class IntegerIDFilter(IDFilter):
     """
-    a class for recognizing an identfier matching a set of policy-encoded 
-    constraints
+    a class for recognizing an integer-typed identfier falling within a
+    prescribed range or matching a set of allowed values.
     """
 
     def __init__(self, name, min=None, lim=None, values=None,
                  isstaticset=True):
         """
         create the filter
+        @param name    the name of the identifier
         @param min     the minimum identifier value recognized
         @param lim     one more than the maximum identifier value recognized
         @param values  an arbitrary list of identifier values recognized.  
@@ -114,6 +214,11 @@ class IntegerIDFilter(IDFilter):
         if len(filter(lambda r: r is not None, self.range)) > 0 and \
            len(filter(lambda r: r is None, self.range)) > 0:
             self.isstatic = False
+        if self.isUnconstrained():
+            self.isstatic = False
+
+    def isUnconstrained(self):
+        return not self.values and not any(self.range)
 
     def recognize(self, id):
         """
@@ -124,7 +229,12 @@ class IntegerIDFilter(IDFilter):
         if it is recongized.
         """
         if not isinstance(id, int):
-            id = int(id)
+            try:
+                id = int(id)
+            except:
+                return None
+        if self.isUnconstrained():
+            return id
 
         if any(self.range):
             if self.range[1] is None and id >= self.range[0]:
@@ -159,18 +269,27 @@ class IntegerIDFilter(IDFilter):
 
         return out
 
+    _dictionary = None
 
     @staticmethod
     def fromPolicy(policy):
         """
         create an IntegerIDFilter from an "id" policy
         """
+        if not IntegerIDFilter._dictionary:
+            pdf = DefaultPolicyFile("ctrl_sched", "IntegerIDFilter_dict.paf",
+                                    "policies")
+            IntegerIDFilter._dictionary = Policy.createPolicy(pdf)
+        p = Policy(policy, True)
+        if IntegerIDFilter._dictionary:
+            p.mergeDefaults(IntegerIDFilter._dictionary)
+
         name = "unknown"
         min = lim = vals = None
-        if policy.exists("name"):    name = policy.getString("name")
-        if policy.exists("min"):     min  = policy.getInt("min")
-        if policy.exists("lim"):     lim  = policy.getInt("lim")
-        if policy.exists("values"):  vals = policy.getArray("values")
+        if policy.exists("name"):   name = policy.getString("name")
+        if policy.exists("min"):    min  = policy.getInt("min")
+        if policy.exists("lim"):    lim  = policy.getInt("lim")
+        if policy.exists("value"):  vals = policy.getArray("value")
 
         return IntegerIDFilter(name, min, lim, vals)
 

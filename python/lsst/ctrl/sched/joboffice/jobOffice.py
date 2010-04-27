@@ -17,6 +17,7 @@ from lsst.ctrl.sched.utils import serializePolicy, unserializePolicy
 from lsst.pex.harness.harnessLib import TracingLog
 
 import os, time, threading
+import traceback as tb
 
 VERB2 = -2
 VERB3 = -3
@@ -85,6 +86,7 @@ class JobOffice(_AbstractBase, threading.Thread):
             self.log.log(Log.INFO, "starting.")
             self.managePipelines()
         except Exception, ex:
+            tb.print_exc()
             self.exc = ex
         self.log.log(Log.INFO, "job office done.")
 

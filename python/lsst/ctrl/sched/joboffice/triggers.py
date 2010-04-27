@@ -13,18 +13,27 @@ import os, copy
 
 class Trigger(_AbstractBase):
     """
-    an abstract class representing a dataset trigger.  When passed a 
-    Dataset instance via the recognize function, it will check it against
-    a set of criteria.  If the criteria are met, the dataset is recognized
-    and the trigger is considered "pulled"
+    an abstract class representing a set of datasets that will be used to
+    create a processing job.  This class is used to describe two kinds of
+    datasets (which kind depends on the isTrigger options passed to the
+    constructor).  The class can describe "trigger datasets"--datasets
+    that are required to exist in order for the job to commence:  subsequently,
+    when a Dataset instance is passed via the recognize function, it will
+    check it against a set of criteria.  If the criteria are met, the dataset
+    is recognized, the trigger is considered "pulled", and this one
+    processing prerequisite is satisfied.  The class can also be used to
+    represent input or output datasets for the Job triggered by a recognized
+    dataset.  In this case, listDatasets is important for generating the
+    full set implied by a particular triggering dataset.
     """
 
-    def __init__(self, fromSubclass=False):
+    def __init__(self, isTrigger=True, fromSubclass=False):
         """
         instantiate this base class.  
         """
         self._checkAbstract(fromSubclass, "Trigger")
         self.isstatic = False
+        self.isTrigger = isTrigger
 
     def hasPredictableDatasetList(self):
         """
@@ -35,13 +44,16 @@ class Trigger(_AbstractBase):
         """
         return self.isstatic
 
-    def listDatasets(self, template=None):
+    def listDatasets(self, template):
         """
-        return a list of all the datasets that will be returned by recognize()
-        @param template    a Dataset instance representing a template for 
-                              identifiers and types not constrained by this 
-                              trigger.  If the given Dataset is not recognized,
-                              an empty set is returned.
+        return a list of applicable datasets corresponding to the IDs
+        associated with a template dataset.  (See class documentation
+        for caveats in this function's behavior depending on how the
+        instance was constructed.
+        @param template    a Dataset instance that would trigger a processing
+                              job.  The identifiers associated with the
+                              template define a job (and constrain its specific
+                              inputs and outputs)
         """
         self._notImplemented("listDatasets")
     
@@ -61,7 +73,7 @@ class Trigger(_AbstractBase):
     classLookup = { }
 
     @staticmethod
-    def fromPolicy(policy):
+    def fromPolicy(policy, isIOdata=False):
         """
         a factory method for creating a Trigger instance based on a 
         trigger policy.
@@ -79,7 +91,7 @@ class Trigger(_AbstractBase):
             # lookup a fully qualified class
             raise RuntimeError("programmer error class name lookup not implemented")
 
-        return cls.fromPolicy(policy)
+        return cls.fromPolicy(policy, isIOdata)
         
 class SimpleTrigger(Trigger):
     """
@@ -159,58 +171,71 @@ class SimpleTrigger(Trigger):
         # all tests pass; return this dataset
         return dataset
 
-    def listDatasets(self, template=None, restrictIDs=False):
+    def listDatasets(self, template):
         """
-        return a list of all the datasets that will be returned by recognize().
-        This implementation returns a set of datasets made up of all 
-        combinations of the dataset types and allowed identifiers (for those
-        identifiers that have a closed set of values).  
-        @param template     a Dataset instance representing a template for 
-                              identifiers and types not constrained by this 
-                              trigger.  If the given Dataset is not recognized,
-                              an empty set is returned.
-        @param restrictIDs  if True, the list of datasets will only contain
-                              the IDs specified by this filter.  If false,
-                              it will also contain those found in the template.
+        return a list of applicable datasets corresponding to the IDs
+        associated with a template dataset.  
+        @param template    a Dataset instance that would trigger a processing
+                              job.  The identifiers associated with the
+                              template defin a job (and constrain its specific
+                              inputs and outputs)
         """
-        if template:
-            # the template is used to set values of identifiers not of 
-            # interest to this filter and identifiers that can't be 
-            # reduced to a closed set.  
-            # if not self.recognize(template):
-            #     return []
-            if restrictIDs:
-                template = copy.deepcopy(template)
-                if template.ids is None: template.ids = {}
-                for id in template.ids.keys():
-                    if not id in self.idfilts.keys():
-                        del template.ids[id]
-            types = [ template.type ]
+
+        # the main difference between SimpleTrigger that describes a trigger
+        # dataset and one that describes input/output data is that the latter
+        # description is complete in terms of defining all of the identifiers
+        # that select the data.  For trigger datasets, only the minimal
+        # identifiers important for the trigger are included in the description.
+        # Thus, in the latter case, the template provides the full set of
+        # identifiers that are relevent to the job.  Another diference is that
+        # when we are describing input/output data, the dataset type of that
+        # data won't necessarily match that of trigger dataset.
+
+        # if not self.recognize(template):
+        #     return []
+
+        if not self.isTrigger:
+            # we are listing input/output data; restrict the ids to those
+            # defined in this class instance's data
+            template = copy.deepcopy(template)
+            if template.ids is None: template.ids = {}
+            for id in template.ids.keys():
+                if not id in self.idfilts.keys():
+                    del template.ids[id]
+
+            # this class defines what types are included in the list
+            types = self.dataTypes
         else:
-            if not self.dataTypes:
-                raise RuntimeError("can't close set without template dataset")
-            types = list(self.dataTypes)
-            template = Dataset(types[0])
+            # we are listing only the trigger data sets defined by this trigger.
+            # The template controls what datatypes get into the output list.
+            types = [ template.type ]
 
         # get a list of allowed id values
         idvals = {}
-        for id in self.idfilts.keys():
-            idvals[id] = []
-            for filt in self.idfilts[id]:
+        if self.idfilts is not None:
+           for id in self.idfilts.keys():
+             idvals[id] = []
+             for filt in self.idfilts[id]:
                 if filt.hasStaticValueSet():
+                    # filter provides closed set of allowed values
                     idvals[id].extend(filt.allowedValues())
-                elif not template.ids.has_key(id):
+                elif template.ids.has_key(id):
+                    # take the value from the template the only allowed value
+                    idvals[id].append(template.ids[id])
+                else:
                     # template datsets unable to close the set
                     raise RuntimeError("can't close identifier set for " + id)
-            if len(idvals[id]) == 0:
+             if len(idvals[id]) == 0:
                 del idvals[id]
 
+        # these are the ids that we need to loop over; for the others, we
+        # just take the value from the template
         idnames = idvals.keys()
         out = []
         if len(idnames) > 0:
 
-            # these are the idnames, then, we are varying; and the number of 
-            # values for each.  The total number of datasets returned will then
+            # iterate through all combinations of allowed id values.
+            # The total number of datasets returned will then
             # be len(types) * PI(valcnt.values())
             valcnt = {}
             for id in idnames:
@@ -244,7 +269,8 @@ class SimpleTrigger(Trigger):
                             break
                         iter[idnames[i]] = 0
 
-        elif restrictIDs:
+        else:
+            # this trigger places no constaints on the files; return a
             # single dataset list based entirely on template
             for type in types:
                 ds = copy.deepcopy(template)
@@ -255,10 +281,13 @@ class SimpleTrigger(Trigger):
     
 
     @staticmethod
-    def fromPolicy(policy):
+    def fromPolicy(policy, isIOdata=False):
         """
-        @param policy   a trigger Policy instance describing the 
+        @param policy     a trigger Policy instance describing the 
                             simple trigger
+        @param isIOdata   True if the policy describes either input or
+                            output data; False if it describes the
+                            trigger datasets.
         """
         dataTypes = None
         if policy.exists("datasetType"):
@@ -274,7 +303,9 @@ class SimpleTrigger(Trigger):
                     idfilts[idfilt.name] = []
                 idfilts[idfilt.name].append(idfilt)
 
-        return SimpleTrigger(dataTypes, ids=idfilts)
+        out = SimpleTrigger(dataTypes, ids=idfilts)
+        out.isTrigger = not isIOdata
+        return out
 
 Trigger.classLookup["Simple"] = SimpleTrigger
 Trigger.classLookup["SimpleTrigger"] = SimpleTrigger

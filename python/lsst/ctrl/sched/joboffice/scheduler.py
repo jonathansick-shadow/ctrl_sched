@@ -91,12 +91,12 @@ class DataTriggeredScheduler(Scheduler):
         self.inputdata = []
         inpps = policy.getArray("job.input")
         for dsp in inpps:
-            self.inputdata.append(Trigger.fromPolicy(dsp))
+            self.inputdata.append(Trigger.fromPolicy(dsp, True))
 
         self.outputdata = []
         outpps = policy.getArray("job.output")
         for dsp in outpps:
-            self.outputdata.append(Trigger.fromPolicy(dsp))
+            self.outputdata.append(Trigger.fromPolicy(dsp, True))
 
         self.jobIdConf = None
         if policy.exists("job.identity"):
@@ -160,7 +160,7 @@ class DataTriggeredScheduler(Scheduler):
                     inputs.extend(filt.listDatasets(recognized))
                 outputs = []
                 for filt in self.outputdata:
-                    outputs.extend(filt.listDatasets(recognized, True))
+                    outputs.extend(filt.listDatasets(recognized))
 
                 trighdlr = \
                       FilesetTriggerHandler(trigger.listDatasets(recognized))

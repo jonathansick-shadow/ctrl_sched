@@ -107,11 +107,6 @@ class SimpleTriggerTestCase(unittest.TestCase):
     def testListDatasets(self):
         t = SimpleTrigger(self.type, self.idd)
         self.assert_(t.hasPredictableDatasetList())
-        dss = t.listDatasets()
-        self.assertEquals(len(dss), 8*16*1)
-        self.assertEquals(dss[0].ids["visit"], 88)
-        for ds in dss:
-            self.assert_(t.recognize(ds), "failed to recognize " + str(ds))
 
         ds = Dataset(self.type, ccd=5, amp=0, visit=88, filt='r')
         dss = t.listDatasets(ds)
@@ -119,6 +114,8 @@ class SimpleTriggerTestCase(unittest.TestCase):
         self.assertEquals(dss[0].ids["visit"], 88)
         self.assert_(dss[0].ids.has_key("filt"))
         self.assertEquals(dss[0].ids["filt"], 'r')
+        for ds in dss:
+            self.assert_(t.recognize(ds), "failed to recognize " + str(ds))
 
         idd = dict(self.idd)
         idd["visit"] = IntegerIDFilter("visit", min=87)
@@ -152,7 +149,7 @@ class SimpleTriggerTestCase(unittest.TestCase):
 
         idp = Policy()
         idp.set("name", "visit")
-        idp.set("values", 88)
+        idp.set("value", 88)
         p.add("id", idp)
         idp = Policy()
         idp.set("name", "ccd")
