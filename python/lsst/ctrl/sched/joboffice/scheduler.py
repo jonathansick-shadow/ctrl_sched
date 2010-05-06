@@ -3,6 +3,7 @@ scheduler classes
 """
 from __future__ import with_statement
 
+from lsst.ctrl.sched import Dataset
 from lsst.ctrl.sched.blackboard import Blackboard, Props, JobItem, DataProductItem
 from lsst.ctrl.sched.base import _AbstractBase
 from triggers import Trigger

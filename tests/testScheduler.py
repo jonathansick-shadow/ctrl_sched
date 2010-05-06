@@ -13,7 +13,7 @@ import time
 from lsst.ctrl.sched.joboffice.scheduler import Scheduler, DataTriggeredScheduler
 from lsst.ctrl.sched import Dataset
 from lsst.ctrl.sched.blackboard import Blackboard
-from lsst.pex.policy import Policy
+from lsst.pex.policy import Policy, PolicyString
 
 testdir = os.path.join(os.environ["CTRL_SCHED_DIR"], "tests")
 exampledir = os.path.join(os.environ["CTRL_SCHED_DIR"], "examples")
@@ -159,12 +159,101 @@ class DataTriggeredSchedulerTestCase(unittest.TestCase):
             job = self.bb.queues.jobsAvailable.get(0)
             self.assertEquals(job.getName(), "Job-1")
 
+idpolicy = """#<?cfg paf policy ?>
+output: {
+  datasetType:  PostISR-CCD
+  id: {
+    name:  visitid
+  }
+  id: {
+    name:  ccdid
+  }
+  id: {
+    name:  snapid
+  }
+}
+"""
         
+class DataTriggeredSchedulerTestCase2(unittest.TestCase):
+    """
+    test for a specific (unticketed) coding bug in _determineJobIdentity().
+    """
+
+    def setUp(self):
+        self.bb = Blackboard(bbdir)
+        self.sched = None
+        
+    def tearDown(self):
+        if os.path.exists(bbdir):
+            os.system("rm -rf %s" % bbdir)
+        self.sched = None
+
+    def testProcessDataset(self):
+        with self.bb.queues:
+            self.assertEquals(self.bb.queues.dataAvailable.length(), 0)
+
+        policy = Policy.createPolicy(os.path.join(exampledir,
+                                                  "ccdassembly-joboffice.paf"))
+        spolicy = policy.getPolicy("schedule")
+
+        # manipulate the policy
+        idp = Policy.createPolicy(PolicyString(idpolicy))
+        spolicy.set("job.identity", idp)
+        
+        self.sched = DataTriggeredScheduler(self.bb, spolicy)
+
+        # pdb.set_trace()
+        ds = Dataset("PostISR", visitid=88, ccdid=22, snapid=0, ampid=15)
+        self.sched.processDataset(ds)
+
+        with self.bb.queues:
+            self.assertEquals(self.bb.queues.dataAvailable.length(), 1)
+            self.assertEquals(self.bb.queues.jobsPossible.length(), 1)
+            job = self.bb.queues.jobsPossible.get(0)
+            self.assertEquals(job.getName(), "Job-1")
+            self.assertEquals(job.triggerHandler.getNeededDatasetCount(), 15)
+            self.assertEquals(self.sched.nameNumber, 2)
+    
+        ds = Dataset("PostISR", visitid=95, ccdid=22, snapid=0, ampid=15)
+        self.sched.processDataset(ds)
+
+        with self.bb.queues:
+            self.assertEquals(self.bb.queues.dataAvailable.length(), 2)
+            self.assertEquals(self.bb.queues.jobsPossible.length(), 2)
+            job = self.bb.queues.jobsPossible.get(1)
+            self.assertEquals(job.getName(), "Job-2")
+            self.assertEquals(job.triggerHandler.getNeededDatasetCount(), 15)
+            inputs = job.getInputDatasets()
+            self.assertEquals(len(inputs), 16)
+            self.assertEquals(inputs[0].type, "PostISR")
+            self.assertEquals(self.sched.nameNumber, 3)
+
+        ds = Dataset("PostISR", visitid=88, ccdid=22, snapid=0, ampid=14)
+        self.sched.processDataset(ds)
+
+        with self.bb.queues:
+            self.assertEquals(self.bb.queues.dataAvailable.length(), 3)
+            self.assertEquals(self.bb.queues.jobsPossible.length(), 2)
+            job = self.bb.queues.jobsPossible.get(0)
+            self.assertEquals(job.triggerHandler.getNeededDatasetCount(), 14)
+
+        # pdb.set_trace()
+        for i in xrange(14):
+            ds = Dataset("PostISR", visitid=88, ccdid=22, snapid=0, ampid=i)
+            self.sched.processDataset(ds)
+
+        with self.bb.queues:
+            self.assertEquals(self.bb.queues.dataAvailable.length(), 17)
+            self.assertEquals(self.bb.queues.jobsPossible.length(), 2)
+            job = self.bb.queues.jobsPossible.get(0)
+            self.assertEquals(job.triggerHandler.getNeededDatasetCount(), 0)
+            self.assert_(job.isReady())
+
         
 
     
 
-__all__ = "AbstractSchedulerTestCase DataTriggeredSchedulerTestCase".split()
+__all__ = "AbstractSchedulerTestCase DataTriggeredSchedulerTestCase DataTriggeredSchedulerTestCase2".split()
 
 if __name__ == "__main__":
     unittest.main()
