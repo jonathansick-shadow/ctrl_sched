@@ -189,7 +189,7 @@ class DataTriggeredScheduler(Scheduler):
                 if len(template) > 0: template = template[0]
             if not template:
                 # default to the first output (then input) dataset
-                template = len(output > 0) and outputs[0] or inputs[0]
+                template = len(outputs > 0) and outputs[0] or inputs[0]
 
             out = Dataset(template.type)
             if self.jobIdConf.exists("type"):
