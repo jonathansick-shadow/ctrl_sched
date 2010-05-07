@@ -160,18 +160,10 @@ class DataTriggeredSchedulerTestCase(unittest.TestCase):
             self.assertEquals(job.getName(), "Job-1")
 
 idpolicy = """#<?cfg paf policy ?>
-output: {
   datasetType:  PostISR-CCD
-  id: {
-    name:  visitid
-  }
-  id: {
-    name:  ccdid
-  }
-  id: {
-    name:  snapid
-  }
-}
+  id: visitid
+  id: ccdid
+  id: snapid
 """
         
 class DataTriggeredSchedulerTestCase2(unittest.TestCase):

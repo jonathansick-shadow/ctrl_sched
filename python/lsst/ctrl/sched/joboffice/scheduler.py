@@ -196,6 +196,7 @@ class DataTriggeredScheduler(Scheduler):
             if self.jobIdConf.exists("type"):
                 out.type = self.jobIdConf.getString("type")
             if self.jobIdConf.exists("id"):
+                out.ids = {}
                 for id in self.jobIdConf.getStringArray("id"):
                     out.ids[id] = template.ids[id]
 
