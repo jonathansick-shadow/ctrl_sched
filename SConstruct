@@ -12,7 +12,7 @@ env = scons.makeEnv("ctrl_sched",
                     ])
 
 pkg = env["eups_product"]
-for d in Split("tests"):
+for d in Split("doc tests"):
     if os.path.isdir(d):
         try:
             SConscript(os.path.join(d, "SConscript"))
@@ -26,6 +26,8 @@ Alias("install", [env.Install(env['prefix'], "python"),
                   env.Install(env['prefix'], "examples"),
                   env.Install(env['prefix'], "policies"),
                   env.Install(env['prefix'], "bin"),
+                  env.InstallAs(os.path.join(env['prefix'], "doc", "doxygen"),
+                                os.path.join("doc", "htmlDir")),
                   env.InstallEups(env['prefix'] + "/ups")])
 
 
