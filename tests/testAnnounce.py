@@ -19,6 +19,9 @@ announceDataset = os.path.join(os.environ["CTRL_SCHED_DIR"], "bin",
 seargs = " -b %(broker)s -r %(runid)s -t %(topic)s"
 seargs += " -q"
 
+dsfile = os.path.join(os.environ["CTRL_SCHED_DIR"], "examples",
+                      "datasetlist.txt")
+
 class AnnounceTestCase(unittest.TestCase):
     def setUp(self):
         self.topic = "test"
@@ -133,14 +136,12 @@ class AnnounceTestCase(unittest.TestCase):
         self.assertEquals(dss[0], ds, "%s != %s" % (dss[0], ds))
 
     def testFile(self):
-        file = os.path.join(os.environ["CTRL_SCHED_DIR"], "examples",
-                            "datasetlist.txt")
         ds = Dataset("PostISR", visit="888", ccd="10", amp="07", snap="0")
         
         cmd = "announceDataset.py"
         cmd += seargs % {"runid": self.runid, "topic": self.topic,
                          "broker": self.broker }
-        cmd += " %s" % file
+        cmd += " %s" % dsfile
         cmd = cmd.split()
 
         os.spawnv(os.P_NOWAIT, announceDataset, cmd)
@@ -302,6 +303,68 @@ class AnnounceTestCase(unittest.TestCase):
             if eds == ds:
                 return True
         return False
+
+    def testMax(self):
+        cmd = announceDataset
+        cmd += seargs % {"runid": self.runid, "topic": self.topic,
+                         "broker": self.broker }
+
+        max = " -m 3"
+        dsopt = " %s" % dsfile
+
+        os.system(cmd+max+dsopt)
+        event = self.rcvr.receiveEvent(500)
+        self.assert_(event is not None)
+        event = self.rcvr.receiveEvent(50)
+        self.assert_(event is not None)
+        event = self.rcvr.receiveEvent(50)
+        self.assert_(event is not None)
+        event = self.rcvr.receiveEvent(50)
+        self.assert_(event is None)
+
+        max = " -m 1"
+        dsopt = ""
+        dsopt += " -D '%s'" % self.dsstr
+        dsopt += " -D '%s'" % self.dsstr
+
+        os.system(cmd+max+dsopt)
+        event = self.rcvr.receiveEvent(500)
+        self.assert_(event is not None)
+        event = self.rcvr.receiveEvent(50)
+        self.assert_(event is None)
+
+        max = " -m 0"
+        os.system(cmd+" -q"+max+dsopt)
+        event = self.rcvr.receiveEvent(100)
+        self.assert_(event is None)
+        event = self.rcvr.receiveEvent(50)
+        self.assert_(event is None)
+
+        max = " -m -4"
+        os.system(cmd+max+dsopt)
+        event = self.rcvr.receiveEvent(100)
+        self.assert_(event is not None)
+        event = self.rcvr.receiveEvent(50)
+        self.assert_(event is not None)
+
+        max = " -m 3"
+        os.system(cmd+max+dsopt)
+        event = self.rcvr.receiveEvent(100)
+        self.assert_(event is not None)
+        event = self.rcvr.receiveEvent(50)
+        self.assert_(event is not None)
+
+        dsopt += " %s" % dsfile
+        os.system(cmd+max+dsopt)
+        event = self.rcvr.receiveEvent(100)
+        self.assert_(event is not None)
+        event = self.rcvr.receiveEvent(50)
+        self.assert_(event is not None)
+        event = self.rcvr.receiveEvent(50)
+        self.assert_(event is not None)
+        event = self.rcvr.receiveEvent(50)
+        self.assert_(event is None)
+
 
 
 

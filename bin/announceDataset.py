@@ -17,7 +17,7 @@ cl = optparse.OptionParser(usage=usage, description=desc)
 cl.add_option("-v", "--verbose", action="store_const", default=0, 
               const=Log.DEBUG, dest="verb", help="print extra status messages")
 cl.add_option("-q", "--quiet", action="store_const", 
-              const=Log.WARN, dest="verb",
+              const=Log.WARN+1, dest="verb",
               help="limit screen messages to error messages")
 cl.add_option("-s", "--silent", action="store_const", 
               const=Log.FATAL+1, dest="verb",
@@ -38,6 +38,9 @@ cl.add_option("-I", "--interval", metavar="SEC", action="store", default=0,
 cl.add_option("-f", "--tell-fail", action="store_true", default=False, 
               dest="fail",
               help="if set, datasets will be marked as failed by default.  This can be over-ridden by the dataset files.")
+cl.add_option("-m", "--max", action="store", type="int", dest="max",
+              default=-1, metavar="#",
+              help="the maximum number of events to send before shutting down (# < 0: no limit)")
 cl.add_option("-i", "--id-delim", action="store", dest="iddelim", default=None,
               metavar="CHARS",
               help="the default delimiters to assume separate the dataset ids in the dataset lists")
@@ -62,7 +65,7 @@ def main():
 
     if cl.opts.synhelp:
         syntaxHelp()
-        sys.exit(0)
+        return 0
 
     if cl.opts.verb:
         logger.setThreshold(cl.opts.verb)
@@ -87,34 +90,45 @@ def main():
     ctrl["format"] = makeFormat(cl.opts.format)
     ctrl["intids"] = []
 
+    excode = 0
+    if cl.opts.max == 0:
+        warn("No events sent because max=%d" % cl.opts.max)
+        return excode
     numberSent = 0
 
     # process the dataset given on the command line
     if cl.opts.datasets:
-        numberSent += sendEventsFor(ctrl, cl.opts.datasets)
+        numberSent += sendEventsFor(ctrl, cl.opts.datasets,
+                                    cl.opts.max - numberSent)
+    if numberSent == cl.opts.max:
+        return excode
 
     # now process each file
-    okay = True
     for filename in cl.args:
         try:
             file = open(filename)
             try:
-                numberSent += sendEventsFor(ctrl, file)
+                numberSent += sendEventsFor(ctrl, file, cl.opts.max-numberSent)
+                if numberSent == cl.opts.max:
+                    break
             finally:
                 file.close()
         except EnvironmentError, ex:
-            okay = False
+            excode = 1
             warn("trouble opening %s: %s", (filename, str(ex.strerror)))
         except Exception, ex:
-            okay = False
+            excode = 1
             traceback.print_exc()
             warn("trouble parsing %s: %s", (filename, str(ex)))
 
-    return okay
+    if excode and numberSent == 0:
+        excode = 2
+    return excode
 
 
-def sendEventsFor(data, lines):
-    count = 0
+def sendEventsFor(data, lines, max=-1):
+    dcount = 0   # number of datasets sent
+    ecount = 0   # number of events sent
     ctrl = data.copy()
     sender = None
 
@@ -145,12 +159,15 @@ def sendEventsFor(data, lines):
                                                ctrl["success"])
                 inform("sending event for %s", dss[0])
                 sender.send(ev)
-                count += len(dss)
+                dcount += len(dss)
+                ecount += 1
+                if max >= 0 and ecount >= max:
+                    break
                 
             else:
                 debug("No dataset parsed from dataset line: %s", line)
 
-    return count
+    return ecount
 
 directives = "topic pause success fail interval iddelim eqdelim intids format".split()
 
