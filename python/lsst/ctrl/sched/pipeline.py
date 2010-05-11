@@ -276,7 +276,7 @@ class _GetAJobComp(object):
             else:
                 self.jobid = {}
             jobid = self.jobid
-            idstr.append("waiting")
+            idstr.append("unknown")
         else:
             self.jobid = jobid
             for key in self.jobid.keys():
