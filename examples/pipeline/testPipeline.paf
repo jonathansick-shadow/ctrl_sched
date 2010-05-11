@@ -5,7 +5,7 @@
 
 localLogMode: true
 eventBrokerHost: "lsst8.ncsa.uiuc.edu" 
-logThreshold: -3
+logThreshold: -5
 nSlices: 1
 shutdownTopic: stopTestPipeline
 

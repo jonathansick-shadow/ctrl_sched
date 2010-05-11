@@ -1,6 +1,7 @@
 """
 tools and stages for pipelines that interact with the JobOffice scheduler
 """
+from cStringIO import StringIO
 import lsst.pex.harness.stage as harnessStage
 from lsst.ctrl.sched import Dataset
 import lsst.ctrl.sched.utils as utils
@@ -225,6 +226,9 @@ class _GetAJobComp(object):
             self.policy = Policy()
         self.policy.mergeDefaults(defpol.getDictionary())
 
+        self.jobid = None
+        self.tagLogger(None)
+
 #        self.mode = self.policy.getString("mode")
 #        if self.mode not in "parallel serial":
 #            raise RuntimeError("Stage %s: Unsupported mode: %s" %
@@ -259,7 +263,59 @@ class _GetAJobComp(object):
         clipboard.put(self.clipboardKeys["outputDatasets"], outputs)
         clipboard.put(self.clipboardKeys["completedDatasets"], [])
         clipboard.put(self.clipboardKeys["jobIdentity"], jobid)
-        
+        self.tagLogger(jobid)
+        self.log.log(Log.INFO, "Processing job: " + self.jobidStr)
+
+    def tagLogger(self, jobid):
+        idstr = []
+        if not jobid:
+            # clear out the previous info
+            if self.jobid:
+                for key in self.jobid.keys():
+                    self._resetLogJobId(self.jobid, key)
+            else:
+                self.jobid = {}
+            jobid = self.jobid
+            idstr.append("waiting")
+        else:
+            self.jobid = jobid
+            for key in self.jobid.keys():
+                idstr.append("%s=%s" % (key, str(jobid[key])))
+
+        self.jobidStr = " ".join(idstr)
+        self.log.setPreamblePropertyString("JobId", self.jobidStr)
+
+        for key in jobid.keys():
+            self._setLogJobIdValue(self.log, jobid, key)
+
+    def _resetLogJobId(self, jobid, key):
+        if jobid.has_key(key):
+            if isinstance(jobid[key], int):
+                jobid[key] = -1
+            elif isinstance(jobid[key], long):
+                jobid[key] = -1L
+            elif isinstance(jobid[key], float):
+                jobid[key] = 0.0
+            elif isinstance(jobid[key], bool):
+                jobid[key] = False
+            else:
+                jobid[key] = ""
+
+    def _setLogJobIdValue(self, log, jobid, key):
+        if jobid.has_key(key):
+            name = "JobId_" + key
+            if isinstance(jobid[key], int):
+                log.setPreamblePropertyInt(name, jobid[key])
+            elif isinstance(jobid[key], long):
+                log.setPreamblePropertyLong(name, jobid[key])
+            elif isinstance(jobid[key], float):
+                log.setPreamblePropertyDouble(name, jobid[key])
+            elif isinstance(jobid[key], bool):
+                log.setPreamblePropertyBool(name, jobid[key])
+            else:
+                log.setPreamblePropertyString(name, jobid[key])
+                    
+
 
 class GetAJobParallelProcessing(_GetAJobComp, harnessStage.ParallelProcessing):
     """
@@ -270,6 +326,7 @@ class GetAJobParallelProcessing(_GetAJobComp, harnessStage.ParallelProcessing):
         """
         get the job assignment and post it to the clipboard.
         """
+        self.tagLogger(None)
         self.setAssignment(clipboard)
 
 class GetAJobSerialProcessing(_GetAJobComp, harnessStage.SerialProcessing):
@@ -281,6 +338,7 @@ class GetAJobSerialProcessing(_GetAJobComp, harnessStage.SerialProcessing):
         """
         get the job assignment and post it to the clipboard.
         """
+        self.tagLogger(None)
         self.setAssignment(clipboard)
 
 class _DataReadyComp(object):
