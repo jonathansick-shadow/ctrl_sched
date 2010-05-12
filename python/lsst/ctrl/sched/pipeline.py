@@ -263,7 +263,7 @@ class _GetAJobComp(object):
         clipboard.put(self.clipboardKeys["outputDatasets"], outputs)
         clipboard.put(self.clipboardKeys["completedDatasets"], [])
         clipboard.put(self.clipboardKeys["jobIdentity"], jobid)
-        self.tagLogger(jobid)
+        self.tagLogger(jobid.copy())
         self.log.log(Log.INFO, "Processing job: " + self.jobidStr)
 
     def tagLogger(self, jobid):
@@ -282,11 +282,15 @@ class _GetAJobComp(object):
             for key in self.jobid.keys():
                 idstr.append("%s=%s" % (key, str(jobid[key])))
 
+        root = Log.getDefaultLog()
+
         self.jobidStr = " ".join(idstr)
         self.log.setPreamblePropertyString("JobId", self.jobidStr)
+        root.setPreamblePropertyString("JobId", self.jobidStr)
 
         for key in jobid.keys():
             self._setLogJobIdValue(self.log, jobid, key)
+            self._setLogJobIdValue(root, jobid, key)
 
     def _resetLogJobId(self, jobid, key):
         if jobid.has_key(key):
