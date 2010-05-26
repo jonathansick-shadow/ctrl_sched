@@ -160,7 +160,7 @@ class _BaseJobOffice(JobOffice):
                                  If None (default), the host given in the
                                  policy is used.  This parameter is for
                                  carrying an override from the command line.
-        @param brokerHost     the port to use to connect to the event broker.
+        @param brokerPort     the port to use to connect to the event broker.
                                  If None (default), the port given in the
                                  policy is used.  This parameter is for
                                  carrying an override from the command line.
@@ -216,8 +216,10 @@ class _BaseJobOffice(JobOffice):
         # initialize the event system
         self.jobReadyEvRcvr = self.dataEvRcvrs = None
         self.jobDoneEvRcvr = self.jobAcceptedEvRcvr = None
+        self.brokerHost = brokerHost
+        self.brokerPort = brokerPort
         if not self.brokerPort and self.policy.exists("listen.brokerHostPort"):
-            self.brokerport = self.policy.get("listen.brokerHostPort")
+            self.brokerPort = self.policy.get("listen.brokerHostPort")
         if not self.brokerHost and (not self.brokerPort or self.brokerPort > 0):
             self.brokerHost = self.policy.get("listen.brokerHostName")
 
@@ -380,12 +382,14 @@ class _BaseJobOffice(JobOffice):
         @param jevent   the job event to process
         """
         if not isinstance(jevent, StatusEvent):
-            # unexpected type; log a message?
+            self.log.log(Log.WARN, "Job event has wrong type: " +
+                         str(type(jevent)))
             return False
         
         with self.bb:
             job = self.findByPipelineId(jevent.getOriginatorId())
             if not job:
+                self.log.log(Log.WARN, "Failed to find job for event: " + str(jevent.getOriginatorId()))
                 return False
             self.bb.markJobDone(job, jevent.getPropertySet().getAsBool("success"))
         return True
@@ -396,6 +400,7 @@ class _BaseJobOffice(JobOffice):
                 job = self.bb.queues.jobsInProgress.get(i)
                 if job.getPipelineId() == id:
                     return job
+                print "DEBUG:", "%s != %s" % (job.getPipelineId(), id)
         return None
 
     def processDataEvents(self):

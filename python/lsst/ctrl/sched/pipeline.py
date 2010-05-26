@@ -252,13 +252,14 @@ class _GetAJobComp(object):
                      "Using OriginatorId = %d" % self.client.getOriginatorId())
 
     def setAssignment(self, clipboard):
+        clipboard.put("originatorId", self.client.getOriginatorId())
         self.client.tellReady()
         self.log.log(Log.INFO-2, "Told JobOffice, I'm ready!")
         jobid, inputs, outputs = self.client.getAssignment()
         if jobid is None:
             raise RuntimeError("empty assignment from JobOffice (event timed out?)")
-        self.log.log(Log.INFO-2, "Received assignment")
-        clipboard.put("originatorId", self.client.getOriginatorId())
+        self.log.log(Log.INFO-2, "Received assignment for pipeline #" +
+                     str(clipboard.get("originatorId")))
         clipboard.put(self.clipboardKeys["inputDatasets"], inputs)
         clipboard.put(self.clipboardKeys["outputDatasets"], outputs)
         clipboard.put(self.clipboardKeys["completedDatasets"], [])
@@ -448,6 +449,9 @@ class _JobDoneComp(_DataReadyComp):
         if clipboard:
             if clipboard.has_key("originatorId"):
                 origid = clipboard.get("originatorId")
+            else:
+                self.log.log(Log.WARN, "OriginatorId not found on clipboard")
+                print "DEBUG: clipboard keys:", str(clipboard.keys())
             if len(self.dataclients) > 0:
                 self.log.log(Log.INFO-5, "reporting the completed files")
                 self.tellDataReady(clipboard)
