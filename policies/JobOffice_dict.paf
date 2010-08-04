@@ -141,6 +141,15 @@ definitions: {
                maxOccurs: 1
                default:   1
             }
+            highWatermark: {
+                type: int
+                description: "maximum number of messages to process before
+                              trying to issue jobs to the pipeline this job
+                              office is working with"
+                minOccurs: 0
+                maxOccurs: 1
+                default: 100
+            }
          }
       }
    }
