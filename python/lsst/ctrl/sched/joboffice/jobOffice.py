@@ -235,6 +235,8 @@ class _BaseJobOffice(JobOffice):
         self.jobTopic = self.policy.get("listen.pipelineEvent")
         self.stopTopic = self.policy.get("listen.stopEvent")
 
+        self.highWatermark = self.policy.get("listen.highWatermark")
+
         # initialize the event system
         self.jobReadyEvRcvr = self.dataEvRcvrs = None
         self.jobDoneEvRcvr = self.jobAcceptedEvRcvr = None
@@ -437,10 +439,15 @@ class _BaseJobOffice(JobOffice):
             trace.done()
             return 0
 
+        watermark = 0
         while devent:
             self._logDataEvent(devent)
             if self.processDataEvent(devent):
                 out += 1
+            watermark += 1
+            if watermark >= self.highWatermark:
+                trace.done()
+                return out
             devent = self.receiveAnyDataEvent(self.emptyWait)
 
         trace.done()
