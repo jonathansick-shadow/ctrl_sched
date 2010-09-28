@@ -304,3 +304,15 @@ class _CommandEventFactory(_StatusEventFactory):
         """set the value of the destination ID"""
         self.destid = val
 
+def importClass(clsname):
+    """
+    return a class object with the given fully-qualified name.
+    """
+    # split into package and unqualified name
+    pathtokens = clsname.rsplit('.', 1) 
+    unqualified = pathtokens.pop().strip()
+    package = pathtokens[0]
+
+    clsmod = __import__(package, globals(), locals(), [unqualified], -1)
+    return getattr(clsmod, unqualified)
+

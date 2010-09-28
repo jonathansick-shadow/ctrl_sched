@@ -25,7 +25,7 @@ definitions: {
          value:       "SimpleTrigger"
       }
       allowed: {
-         value:       "lsst.ctrl.sched.joboffice.trigger.SimpleTrigger"
+         value:       "lsst.ctrl.sched.joboffice.triggers.SimpleTrigger"
       }
    }
 
@@ -38,7 +38,7 @@ definitions: {
 
    id: {
       type:         "policy"
-      description   "a descripition of an identifier trigger.  There
+      description:  "a description of an identifier trigger.  There
                      should be one 'id' value for each identifier
                      constraint."
       minOccurs:    0

@@ -1,0 +1,118 @@
+#<?cfg paf dictionary ?>
+#
+target: trigger
+
+description:  "A conformant policy describes dataset filtering constraints
+               based solely on the dataset type and its identifiers."
+
+definitions: {
+
+   className: {
+      type:         "string"
+      description:  "the fully-qualified python class name for the
+                     Trigger class used to consume and use this data.
+                     The value sets the dictionary that applies: specifically,
+                     when this parameter has one of the allowed values (all
+                     of which are synonyms for each other), this dictionary 
+                     is applicable"
+      default:      "Mapper"
+      minOccurs:    0
+      maxOccurs:    1        # parameter may occur only once in policy file
+      allowed: {
+         value:       "Mapper"
+      }
+      allowed: {
+         value:       "MapperTrigger"
+      }
+      allowed: {
+         value:       "lsst.ctrl.sched.joboffice.triggers.MapperTrigger"
+      }
+   }
+
+   mapper:  {
+      type:         "Policy"
+      description:  "a description of the mapper that should be used
+                     and how it should be used."
+      minOccurs:    1
+      maxOccurs:    1
+      dictionary: {
+        definitions: {
+            className: {
+                type:        string
+                minOccurs:   1
+                maxOccurs:   1
+                description: "the fully module-qualified name of the class 
+                              subclassed from 
+                              ctrl.daf.persistence.mapper.Mapper that 
+                              implements the needed mapping."
+            }
+            configuration: {
+                type:        Policy
+                minOccurs:   0
+                maxOccurs:   1
+                description: "the policy that configures the mapper given by
+                              the classname parameter."
+            }
+            lookupType:  {
+                type:        string
+                minOccurs:   1
+                maxOccurs:   1
+                description: "the dataset type to be passed to the mapper's
+                              queryMetadata() function to provide the mapping."
+            }
+            idGranularity:  {
+                type:        string
+                minOccurs:   1
+                maxOccurs:   1
+                description: "the ID key to be passed to the mapper's
+                              queryMetadata() function that sets the 
+                              granularity of the mapping."
+            }
+        }
+      }
+   }
+
+   datasetType: {
+      type:         "string"
+      description:  "The name of the datatype recognized for input into 
+                     the mapping.  This may appear more than once.  If
+                     not given, any datatype is recognized.  "
+      minOccurs:    0
+      maxOccurs:    -1
+   }
+
+   triggerId: {
+      type:         string
+      description:  "the name for an ID whose value should be provided as 
+                     input into the mapping."
+      minOccurs:    0
+      maxOccurs:    -1
+   }
+
+   targetType: {
+      type:         "string"
+      description:  "The name of the datatype of the dataset that input
+                     datasets recognized will map into.  If not given,
+                     the input dataset type will be taken as the
+                     target type."
+      minOccurs:    0
+      maxOccurs:    1
+   }
+
+   targetId: {
+      type:         string
+      description:  "the name for an ID whose value must be returned by
+                     the mapping."
+      minOccurs:    0
+      maxOccurs:    -1
+   }
+
+   prerequisites: {
+      type:         bool
+      description:  "if true, the datasets implied by this trigger can
+                     be considered prerequisites for processing"
+      minOccurs:    0
+      maxOccurs:    1
+      default:      false
+   }
+}
