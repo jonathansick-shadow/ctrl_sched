@@ -12,6 +12,9 @@ from lsst.ctrl.sched.base import _AbstractBase
 
 import os, copy
 
+# NOTE:  the two trigger implementations do not use the Trigger API in
+# a consistent way; the Trigger API needs to be reworked.
+
 class Trigger(_AbstractBase):
     """
     an abstract class representing a set of datasets that will be used to
