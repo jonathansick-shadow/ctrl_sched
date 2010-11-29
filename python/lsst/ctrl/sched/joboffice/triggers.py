@@ -25,13 +25,17 @@ classes for evaluating triggers
 """
 from __future__ import with_statement
 
-from lsst.pex.policy import Policy
+from lsst.pex.policy import Policy, DefaultPolicyFile
+from lsst.daf.persistence import butlerFactory, Mapper
 from lsst.pex.logging import Log
 from id import IDFilter
-from lsst.ctrl.sched import Dataset
+from lsst.ctrl.sched import Dataset, utils
 from lsst.ctrl.sched.base import _AbstractBase
 
 import os, copy
+
+# NOTE:  the two trigger implementations do not use the Trigger API in
+# a consistent way; the Trigger API needs to be reworked.
 
 class Trigger(_AbstractBase):
     """
@@ -111,7 +115,10 @@ class Trigger(_AbstractBase):
 
         else:
             # lookup a fully qualified class
-            raise RuntimeError("programmer error class name lookup not implemented")
+            cls = utils.importClass(clsname)
+            if not issubclass(cls, Trigger):
+                raise TypeError("Policy className is not a Trigger type: " +
+                                clsname)
 
         return cls.fromPolicy(policy, isIOdata)
         
@@ -332,3 +339,152 @@ class SimpleTrigger(Trigger):
 Trigger.classLookup["Simple"] = SimpleTrigger
 Trigger.classLookup["SimpleTrigger"] = SimpleTrigger
 
+class MapperTrigger(Trigger):
+    """
+    a Trigger implementation in which datasets are described in terms of a
+    dataset type and a mapping function that maps a set of IDs into another
+    set.
+    """
+
+    def __init__(self, matchTypes, mapper, lookupType, granularity,
+                 triggerIds=None, targetIds=None, targetType=None):
+        """
+        create the trigger.
+        @param matchTypes    the list of types of datasets to look for.  If
+                               empty, any type will be matched.
+        @param mapper        an instance of lsst.daf.persistence.mapper.Mapper
+                               the provides the required ID mapping
+        @param granularity   the ID key provided to the mapper that sets
+                               the needed ID granularity in the output mapping.
+        @param lookupType    the dataset type ot provide the mapper to
+                               provide the needed mapping
+        @param granularity   the ID key to use to set the mapper's ID
+                               granularity.
+        @param triggerIds    the set of ID names that will be the input into
+                               the mapping.  If None, an empty list is assumed.
+        @param targetIds     the set of names for the IDS that are needed out 
+                               of the mapping to create a list of relevent
+                               datasets.  If None, an empty list is assumed.
+        @param targetType    the dataset to map to.  If None, the input type
+                               will be assumed.
+        @param prereq        if True, consider the output datasets implied by
+                               the mapping a job prerequisite
+        """
+        Trigger.__init__(self, fromSubclass=True)
+
+        if matchTypes is None:
+            matchTypes = []
+        elif not isinstance(matchTypes, list):
+            matchTypes = [ matchTypes ]
+        self.matchTypes = matchTypes
+        if not isinstance(mapper, Mapper):
+            raise ValueError("mapper parameter value not a Mapper:" +
+                             type(mapper))
+        self.mapper = mapper
+        self.lookupType = lookupType
+        self.gran = granularity
+        if triggerIds is None:
+            triggerIds = []
+        self.triggerIds = triggerIds
+        if targetIds is None:
+            targetIds = []
+        self.targetIds = targetIds
+        self.targetType = targetType
+
+        self.prereq = False
+
+    def listDatasets(self, template):
+        """
+        return a list of applicable datasets corresponding to the IDs
+        associated with a template dataset.  (See class documentation
+        for caveats in this function's behavior depending on how the
+        instance was constructed.
+        @param template    a Dataset instance that would trigger a processing
+                              job.  The identifiers associated with the
+                              template define a job (and constrain its specific
+                              inputs and outputs)
+        """
+        if self.matchTypes and template.type not in self.matchTypes:
+            return []
+        
+        trigVals = {}
+        for id in self.triggerIds:
+            trigVals[id] = None
+            if id in template.ids:
+                trigVals[id] = template.ids[id]
+
+        out = []
+        outType = self.targetType or template.type
+        for targetVals in self._mapIds(trigVals):
+            ids = {}
+            if len(targetVals) != len(self.targetIds):
+                raise ValueError("Wrong number of values; " +
+                                 "_mapIds programming error?")
+            for i in xrange(len(self.targetIds)):
+                ids[self.targetIds[i]] = targetVals[i]
+            out.append(Dataset(outType, ids=ids))
+
+        return out
+
+
+    def _mapIds(self, triggerValues):
+        return self.mapper.queryMetadata(self.lookupType, self.gran,
+                                         self.targetIds, triggerValues)
+
+    def recognize(self, dataset):
+        """
+        return a list of job identifiers that this dataset is recognized to
+        be a prerequesite for .  
+
+        @param dataset    a Dataset instance to test
+        """
+        jobs = self.listDatasets(dataset)
+        return (jobs and dataset) or None
+
+    @staticmethod
+    def fromPolicy(policy, isIOdata=False):
+        """
+        @param policy     a trigger Policy instance describing the 
+                            simple trigger
+        @param isIOdata   True if the policy describes either input or
+                            output data; False if it describes the
+                            trigger datasets.
+        """
+        defPolFile = DefaultPolicyFile("ctrl_sched", "MapperTrigger_dict.paf",
+                                       "policies")
+        defPolicy = Policy.createPolicy(defPolFile,
+                                        defPolFile.getRepositoryPath())
+        policy.mergeDefaults(defPolicy.getDictionary())
+        
+        # create the mapper
+        mapperPol = policy.get("mapper")
+        clsname = mapperPol.get("className")
+        mapperConfig = mapperPol.get("configuration")
+        mapper = butlerFactory._importMapper(clsname, mapperConfig)
+        
+        lookupType = mapperPol.get("lookupType")
+        granKey = mapperPol.get("idGranularity")
+
+        matchTypes = None
+        if policy.exists("datasetType"):
+            matchTypes = policy.getArray("datasetType")
+        triggerIds = None
+        if policy.exists("triggerId"):
+            triggerIds = policy.getArray("triggerId")
+        targetType = None
+        if policy.exists("targetType"):
+            targetType = policy.get("targetType")
+        targetIds = None
+        if policy.exists("targetId"):
+            targetIds = policy.getArray("targetId")
+
+        out = MapperTrigger(matchTypes, mapper, lookupType, granKey,
+                            triggerIds, targetIds, targetType)
+        out.isTrigger = not isIOdata
+        out.prereq = policy.get("prerequisites")
+        return out
+
+Trigger.classLookup["Mapper"] = MapperTrigger
+Trigger.classLookup["MapperTrigger"] = MapperTrigger
+        
+        

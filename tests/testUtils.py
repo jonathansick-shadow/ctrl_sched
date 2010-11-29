@@ -198,8 +198,25 @@ class EventSenderTestCase(unittest.TestCase):
         self.assert_(dslist[0].valid)
 
 
+class ImporterTestCase(unittest.TestCase):
 
-__all__ = "RunIdTestCase EventSenderTestCase".split()
+    def setUp(self):
+        pass
+    def tearDown(self):
+        pass
+
+    def testNoFind(self):
+        self.assertRaises(ImportError, utils.importClass,
+                          "lsst.ctrl.sched.goober.Goob")
+        
+    def testImport(self):
+        tcls = utils.importClass("lsst.ctrl.sched.joboffice.triggers.Trigger")
+        self.assert_(isinstance(tcls, type))
+        cls = utils.importClass("lsst.ctrl.sched.joboffice.triggers.SimpleTrigger")
+        self.assert_(issubclass(cls, tcls))
+
+
+__all__ = "RunIdTestCase EventSenderTestCase ImporterTestCase".split()
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:

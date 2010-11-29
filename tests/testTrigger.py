@@ -32,11 +32,22 @@ import os
 import sys
 import unittest
 import time
+import copy
 
-from lsst.ctrl.sched.joboffice.triggers import Trigger, SimpleTrigger
+from lsst.ctrl.sched.joboffice.triggers import Trigger, SimpleTrigger, MapperTrigger
 from lsst.ctrl.sched import Dataset
 from lsst.ctrl.sched.joboffice.id import IDFilter, IntegerIDFilter
-from lsst.pex.policy import Policy
+from lsst.pex.policy import Policy, DefaultPolicyFile
+from lsst.daf.persistence import LogicalLocation
+from lsst.daf.base import PropertySet
+
+from lsst.pex.logging import Log
+Log.getDefaultLog().setThreshold(Log.WARN)
+
+testdir = os.path.join(os.environ['CTRL_SCHED_DIR'], 'tests')
+locations = PropertySet()
+locations.set("input", testdir)
+LogicalLocation.setLocationMap(locations)
 
 class AbstractTriggerTestCase(unittest.TestCase):
 
@@ -166,8 +177,8 @@ class SimpleTriggerTestCase(unittest.TestCase):
         trig = Trigger.fromPolicy(p)
         self.testDatasetType(trig)
 
-        p.set("className", "lsst.ctrl.sched.joboffice.trigger.SimpleTrigger")
-        self.assertRaises(RuntimeError, Trigger.fromPolicy, p)
+        p.set("className", "lsst.ctrl.sched.joboffice.goober.SimpleTrigger")
+        self.assertRaises(ImportError, Trigger.fromPolicy, p)
         p.set("className", "Simple")
 
         idp = Policy()
@@ -188,8 +199,61 @@ class SimpleTriggerTestCase(unittest.TestCase):
         # pdb.set_trace()
         self.testIds(trig)
 
+testds = Dataset("src",
+                 ids={"visit": 85408535, "snap": 1, "raft": "4,3",
+                      "sensor": "2,2", "channel": "1,7" })
 
+class MapperTriggerTestCase(unittest.TestCase):
 
+    def setUp(self):
+        example = DefaultPolicyFile("ctrl_sched", "srcAssoc-joboffice.paf",
+                                    "examples")
+        self.schedpolicy = Policy.createPolicy(example)
+        self.tpolicy = self.schedpolicy.get("schedule.trigger")
+        self.trigger = None
+
+    def tearDown(self):
+        pass
+
+    def testPolicyOK(self):
+        self.assertEquals(self.tpolicy.get("className"), "MapperTrigger")
+
+    def testFromPolicy(self):
+        self.trigger = Trigger.fromPolicy(self.tpolicy)
+        self.assert_(isinstance(self.trigger, MapperTrigger))
+
+    def testRecognize(self):
+        self.testFromPolicy()
+        self.assert_(self.trigger.recognize(testds))
+
+    def testNoRecognize(self):
+        ds = copy.deepcopy(testds)
+        ds.type = "goob"
+        
+        self.testFromPolicy()
+        self.assert_(not self.trigger.recognize(ds))
+
+    def testListJobs(self):
+        self.testFromPolicy()
+        jobs = self.trigger.listDatasets(testds)
+        self.assertEquals(len(jobs), 1)
+        self.assertEquals(jobs[0].type, 'source')
+        self.assert_(jobs[0].ids.has_key('skyTile'))
+        self.assertEquals(jobs[0].ids['skyTile'], 95127)
+        
+    def testListJobs2(self):
+        policy = self.schedpolicy.get("schedule.job.input")
+        trigger = Trigger.fromPolicy(policy)
+        ds = Dataset("goob", ids={ "skyTile": 95127 })
+
+        inputs = trigger.listDatasets(ds)
+        self.assertEquals(len(inputs), 8)
+        self.assertEquals(inputs[0].type, 'src')
+        self.assert_(inputs[0].ids.has_key('visit'))
+        self.assert_(inputs[0].ids.has_key('raft'))
+        self.assert_(inputs[0].ids.has_key('sensor'))
+        self.assertEquals(inputs[0].ids['visit'], 85408535)
+        
 
 __all__ = "AbstractTriggerTestCase SimpleTriggerTestCase".split()
 
