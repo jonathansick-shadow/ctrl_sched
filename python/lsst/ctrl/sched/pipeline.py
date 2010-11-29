@@ -305,7 +305,13 @@ class _GetAJobComp(object):
             for key in self.jobid.keys():
                 idstr.append("%s=%s" % (key, str(jobid[key])))
 
-        root = Log.getDefaultLog()
+# this does not work as intended (i.e. properties do not get into the
+# intended loggers).  Until this is made possible by pex_logging, we will
+# just add these properties to our own local logger.
+#
+#        root = Log.getDefaultLog()
+#
+        root = self.logger
 
         self.jobidStr = " ".join(idstr)
         self.log.setPreamblePropertyString("JobId", self.jobidStr)
