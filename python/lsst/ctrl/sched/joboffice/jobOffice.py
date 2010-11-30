@@ -33,10 +33,9 @@ from lsst.ctrl.sched import Dataset
 from lsst.ctrl.events import EventSystem, EventReceiver, EventTransmitter, StatusEvent, CommandEvent
 from lsst.pex.policy import Policy, DefaultPolicyFile, PolicyString, PAFWriter
 from lsst.daf.base import PropertySet
-from lsst.pex.logging import Log
+from lsst.pex.logging import Log, BlockTimingLog
 from scheduler import DataTriggeredScheduler
 from lsst.ctrl.sched.utils import serializePolicy, unserializePolicy
-from lsst.pex.harness.harnessLib import TracingLog
 
 import os, time, threading
 import traceback as tb
@@ -395,7 +394,7 @@ class _BaseJobOffice(JobOffice):
                 self.log.log(Log.WARN, "Trouble logging: " + msg + " % " + str(data))
 
     def _trace(self, where, lev=TRACE):
-        out = TracingLog(self.log, where, lev)
+        out = BlockTimingLog(self.log, where, lev)
         out.start()
         return out
             

@@ -1,5 +1,5 @@
 setupRequired(pex_policy >= 3.4.4)
-setupRequired(pex_logging >= 3.3.5)
+setupRequired(pex_logging >= 4.1.1.0)
 setupRequired(daf_persistence >= 3.3.10)
 setupRequired(pex_harness >= 3.6.2)
 setupRequired(ctrl_events >= 3.11)
