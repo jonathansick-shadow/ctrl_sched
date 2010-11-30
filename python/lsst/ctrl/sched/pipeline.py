@@ -311,7 +311,7 @@ class _GetAJobComp(object):
 #
 #        root = Log.getDefaultLog()
 #
-        root = self.logger
+        root = self.log
 
         self.jobidStr = " ".join(idstr)
         self.log.setPreamblePropertyString("JobId", self.jobidStr)
