@@ -280,8 +280,21 @@ class _GetAJobComp(object):
         jobid, inputs, outputs = self.client.getAssignment()
         if jobid is None:
             raise RuntimeError("empty assignment from JobOffice (event timed out?)")
+
         self.log.log(Log.INFO-2, "Received assignment for pipeline #" +
                      str(clipboard.get("originatorId")))
+
+        # ids is a dictionary 
+        allZero = 1
+        for inputKey, inputValue in inputs[0].ids.iteritems():
+            # self.log.log(Log.INFO, "key  " + str(inputKey) + " value-" + str(inputValue) + "----")
+            if str(inputValue) != "0":
+                allZero = 0 
+
+        if allZero == 1:
+            self.log.log(Log.INFO, "All of the attributes are zero, denoting noMoreDatasets ")
+            clipboard.put("noMoreDatasets", allZero)
+        
         clipboard.put(self.clipboardKeys["inputDatasets"], inputs)
         clipboard.put(self.clipboardKeys["outputDatasets"], outputs)
         clipboard.put(self.clipboardKeys["completedDatasets"], [])
