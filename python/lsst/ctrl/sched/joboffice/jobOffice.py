@@ -419,11 +419,14 @@ class _BaseJobOffice(JobOffice):
 
     def findByPipelineId(self, id):
         with self.bb.queues.jobsInProgress:
+            self.log.log(Log.DEBUG, "findByPipelineId: jobsInProgress.length() = "+ str(self.bb.queues.jobsInProgress.length()))
+            self.log.log(Log.DEBUG, "findByPipelineId: looking up id= "+ str(id))
             for i in xrange(self.bb.queues.jobsInProgress.length()):
                 job = self.bb.queues.jobsInProgress.get(i)
                 if job.getPipelineId() == id:
                     return job
-                print "DEBUG:", "%s != %s" % (job.getPipelineId(), id)
+                # print "DEBUG:", "%s != %s" % (job.getPipelineId(), id)
+		self.log.log(Log.WARN, "findByPipelineId: %s != %s" % (str(job.getPipelineId()), str(id)))
         return None
 
     def processDataEvents(self):
