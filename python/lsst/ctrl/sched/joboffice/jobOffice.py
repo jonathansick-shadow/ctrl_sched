@@ -130,7 +130,6 @@ class JobOffice(_AbstractBase, threading.Thread):
 
             self.log = Log(self.jo.log, "stop")
 
-
             selector = ""
             if runId:  selector = "RUNID='%s'" % runId
                 
@@ -139,10 +138,8 @@ class JobOffice(_AbstractBase, threading.Thread):
                                           selector)
             else:
                 self.rcvr = EventReceiver(brokerHost, stopTopic, selector)
-            self.log.log(Log.INFO-1, "_StopThread __init__ done. %s %s %s" % (brokerHost, stopTopic, selector))
                 
         def run(self):
-            self.log.log(Log.INFO, "_StopThread logging thread started.")
             while True:
                 event = self.rcvr.receiveEvent(self.timeout)
                 if event:
@@ -150,9 +147,7 @@ class JobOffice(_AbstractBase, threading.Thread):
                                  "shutting down JobOffice thread")
                     self.jo.stop()
                 if self.jo.halt:
-                    self.log.log(Log.INFO, "_StopThread logging thread: self.jo.halt detected.")
                     return
-            self.log.log(Log.INFO, "_StopThread logging thread: WTF? shouldn't happen")
 
     classLookup = { }
 
@@ -424,14 +419,14 @@ class _BaseJobOffice(JobOffice):
 
     def findByPipelineId(self, id):
         with self.bb.queues.jobsInProgress:
-            self.log.log(Log.WARN, "findByPipelineId:", "length = %d" % (self.bb.queues.jobsInProgress.length()))
+            self.log.log(Log.DEBUG, "findByPipelineId: jobsInProgress.length() = "+ str(self.bb.queues.jobsInProgress.length()))
+            self.log.log(Log.DEBUG, "findByPipelineId: looking up id= "+ str(id))
             for i in xrange(self.bb.queues.jobsInProgress.length()):
                 job = self.bb.queues.jobsInProgress.get(i)
                 if job.getPipelineId() == id:
-                    self.log.log(Log.WARN, "fbpi:", "found %s" % (id))
                     return job
                 # print "DEBUG:", "%s != %s" % (job.getPipelineId(), id)
-                self.log.log(Log.WARN, "DEBUG:", "%s != %s" % (job.getPipelineId(), id))
+		self.log.log(Log.WARN, "findByPipelineId: %s != %s" % (str(job.getPipelineId()), str(id)))
         return None
 
     def processDataEvents(self):
