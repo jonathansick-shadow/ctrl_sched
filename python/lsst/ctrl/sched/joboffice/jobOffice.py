@@ -78,6 +78,7 @@ class JobOffice(_AbstractBase, threading.Thread):
         self.log = logger   # override this in sub-class
 
         self.halt = False
+        self.finalDatasetSent = False
         self.stopTopic = "JobOfficeStop"
         self.stopThread = None
         self.exc = None
@@ -233,6 +234,7 @@ class _BaseJobOffice(JobOffice):
         self.dataTopics = self.policy.getArray("listen.dataReadyEvent")
         self.jobTopic = self.policy.get("listen.pipelineEvent")
         self.stopTopic = self.policy.get("listen.stopEvent")
+        self.jobOfficeTopic = self.policy.get("listen.jobOfficeEvent")
 
         self.highWatermark = self.policy.get("listen.highWatermark")
 
@@ -251,6 +253,7 @@ class _BaseJobOffice(JobOffice):
         self.jobDoneEvRcvr     = None
         self.jobAcceptedEvRcvr = None
         self.jobAssignEvTrx    = None
+        self.jobOfficeRcvr     = None
         if not forDaemon:
             self._setEventPipes()
 
@@ -268,39 +271,48 @@ class _BaseJobOffice(JobOffice):
             for topic in self.dataTopics:
                 self.dataEvRcvrs.append(EventReceiver(self.brokerHost, topic,
                                                       select))
-            if select:  select += " and "
+
             self.jobReadyEvRcvr = EventReceiver(self.brokerHost, self.jobTopic,
-                                                select+"STATUS='job:ready'")
+                                                select+"and STATUS='job:ready'")
             self.jobDoneEvRcvr = EventReceiver(self.brokerHost, self.jobTopic,
-                                               select+"STATUS='job:done'")
+                                               select+"and STATUS='job:done'")
             self.jobAcceptedEvRcvr = EventReceiver(self.brokerHost,
                                                    self.jobTopic,
-                                               select+"STATUS='job:accepted'")
+                                               select+"and STATUS='job:accepted'")
             self.jobAssignEvTrx = EventTransmitter(self.brokerHost,
                                                    self.jobTopic)
+            self.jobOfficeRcvr = EventReceiver(self.brokerHost,
+                                                 self.jobOfficeTopic,
+                                                 select)
+
+
                                                    
         elif self.brokerPort > 0:
             self.dataEvRcvrs = []
             for topic in self.dataTopics:
                 self.dataEvRcvrs.append(EventReceiver(self.brokerHost,
-                                                      self.brokerPort,
-                                                      topic, select))
-            if select:  select += " and "
+                                                      topic, select, self.brokerPort))
+
             self.jobReadyEvRcvr = EventReceiver(self.brokerHost,
-                                                self.brokerPort,
                                                 jobTopic,
-                                                select+"STATUS='job:ready'")
+                                                select+"and STATUS='job:ready'",
+                                                self.brokerPort)
             self.jobDoneEvRcvr = EventReceiver(self.brokerHost,
-                                               self.brokerPort,
                                                jobTopic,
-                                               select+"STATUS='job:done'")
+                                               select+"and STATUS='job:done'",
+                                               self.brokerPort)
             self.jobAcceptedEvRcvr = EventReceiver(self.brokerHost,
-                                                   self.brokerPort,
                                                    jobTopic,
-                                                select+"STATUS='job:accepted'")
+                                                   select+"and STATUS='job:accepted'",
+                                                   self.brokerPort)
             self.jobAssignEvTrx = EventTransmitter(self.brokerHost,
-                                                   self.brokerPort,
-                                                   self.jobTopic)
+                                                   self.jobTopic, 
+                                                   self.brokerPort)
+
+            self.jobOfficeRcvr = EventReceiver(self.brokerHost,
+                                                 self.jobOfficeTopic,
+                                                 select, 
+                                                 self.brokerPort);
 
             
     
@@ -326,6 +338,8 @@ class _BaseJobOffice(JobOffice):
                 return
 
             trace = self._trace("loop", VERB3)
+
+            self.processJobOfficeEvents()
             
             # listen for completed Jobs
             self.processDoneJobs()
@@ -342,7 +356,36 @@ class _BaseJobOffice(JobOffice):
             if maxIterations is not None:
                 i += 1
 
+            # look to see if all jobs are complete.
+            self.observeStatusOfJobs()
+
             trace.done()
+
+    def observeStatusOfJobs(self):
+        trace = self._trace("observeStatusOfJobs")
+        if self.finalDatasetSent == True:
+            with self.bb.queues:
+                 done = self.bb.queues.jobsInProgress.isEmpty() and self.bb.queues.jobsAvailable.isEmpty()
+                 self.log.log(Log.DEBUG, "observe: jobsInProgress.length() = "+ str(self.bb.queues.jobsInProgress.length()))
+                 self.log.log(Log.DEBUG, "observe: jobsInProgress.isEmpty() = "+ str(self.bb.queues.jobsInProgress.isEmpty()))
+                 self.log.log(Log.DEBUG, "observe: jobsInAvailable.length() = "+ str(self.bb.queues.jobsAvailable.length()))
+                 self.log.log(Log.DEBUG, "observe: jobsInAvailable.isEmpty() = "+ str(self.bb.queues.jobsAvailable.isEmpty()))
+                 if done:
+                    self.log.log(Log.DEBUG, "observe: done!")
+                    self.halt = True
+                 else:
+                    self.log.log(Log.DEBUG, "observe: NOT done!")
+        trace.done()
+
+    def processJobOfficeEvents(self):
+        trace = self._trace("processJobOfficeEvents")
+        jevent = self.jobOfficeRcvr.receiveStatusEvent(self.emptyWait)
+        if not jevent:
+            trace.done()
+            return
+        self.finalDatasetSent = True
+        trace.done()
+        return
 
     def processDoneJobs(self):
         """
@@ -414,7 +457,16 @@ class _BaseJobOffice(JobOffice):
             if not job:
                 self.log.log(Log.WARN, "Failed to find job for event: " + str(jevent.getOriginatorId()))
                 return False
-            self.bb.markJobDone(job, jevent.getPropertySet().getAsBool("success"))
+            success = jevent.getPropertySet().getAsBool("success")
+
+            # if the job failed, decrement the retry counter, and check to see if 
+            # the job can be retried.  If it can, reschedule it.  If not, mark it as done.
+            if success == False:
+                job.decrementRetries()
+                if job.canRetry() == True:
+                    self.bb.rescheduleJob(job)
+                    return True
+            self.bb.markJobDone(job, success)
         return True
 
     def findByPipelineId(self, id):

@@ -133,6 +133,16 @@ definitions: {
                default: "JobOfficeStop"
             }
 
+            jobOfficeEvent: {
+                type: string
+                description: "the event topic name that the jobOffice will
+                                receive events sent from the outside (ie, non-pipeline 
+                                workers)."
+                minOccurs: 0
+                maxOccurs: 1
+                default: "JobOfficeTopic"
+            }
+
             initialWait: {
                type:  int
                description:  "the number of milliseconds to wait for the 

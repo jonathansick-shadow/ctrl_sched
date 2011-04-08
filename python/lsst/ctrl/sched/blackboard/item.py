@@ -472,6 +472,7 @@ class JobItem(BasicBlackboardItem):
                  unique across items, but typically it is.
     INPUT      a list of the datasets that serve as input a pipeline job
     OUTPUT     a list of the datasets will be produced by a pipeline job
+    RETRIES    the number of times to retry this job
     @endverbatim
 
     These are normally created via createItem() which chooses the internal
@@ -483,9 +484,10 @@ class JobItem(BasicBlackboardItem):
     PIPELINEID = "PIPELINEID"
     JOBIDENTITY = "JOBIDENTITY"
     SUCCESS = "SUCCESS"
+    RETRIES = "RETRIES"
 
     def __init__(self, impl, jobDataset=None, name=None, inputs=None, 
-                 outputs=None, triggerHandler=None):
+                 outputs=None, triggerHandler=None, retries=None):
         """
         create an item.  This is not usually called directly by the user but
         rather via createItem().  
@@ -496,12 +498,17 @@ class JobItem(BasicBlackboardItem):
         @param inputs   a list of the output datasets (as Dataset list)
         @param outputs  a list of the output datasets (as Dataset list)
         @param triggerHandler  a TriggerHandler instance
+        @param retries  the number times this object can be retried.
         """
         BasicBlackboardItem.__init__(self, impl, name)
         if inputs:  self._setDatasets(impl, self.INPUT, inputs)
         if outputs:  self._setDatasets(impl, self.OUTPUT, outputs)
         if jobDataset:
             impl._setProperty(self.JOBIDENTITY, jobDataset.toPolicy())
+        if retries is not None: 
+            impl._setProperty(self.RETRIES, retries)
+        else:
+            impl._setProperty(self.RETRIES, 0)
 
         self.triggerHandler = triggerHandler
 
@@ -552,6 +559,20 @@ class JobItem(BasicBlackboardItem):
             return self.triggerHandler.addDataset(dataset)
         return False
 
+    def decrementRetries(self):
+        val = self.getRetries()
+        val -= 1
+        self.setRetries(val)
+
+    def setRetries(self, val):
+        self._impl._setProperty(self.RETRIES, val)
+
+    def getRetries(self):
+        return self._impl.getProperty(self.RETRIES)
+
+    def canRetry(self):
+        return (self.getRetries() > 0)
+
     def isReady(self):
         """
         return True if all the trigger files have been produced and the job is
@@ -572,7 +593,7 @@ class JobItem(BasicBlackboardItem):
 
     @staticmethod
     def createItem(jobDataset, name, inputs=None, outputs=[], 
-                   triggerHandler=None, props=None):
+                   triggerHandler=None, props=None, retries=None):
         """
         create a BlackboardItem with the given properties
         @param jobDataset      a dataset that provides the unique identity for
@@ -582,12 +603,13 @@ class JobItem(BasicBlackboardItem):
         @param outputs         a list of the output datasets (as Dataset list)
         @param triggerHandler  a TriggerHandler instance
         @param props           a dictionary of properties
+        @param retries         the number times this JobItem can be retried
         """
         impl = PolicyBlackboardItem()
         if props:
             for key in props.keys():
                 impl._setProperty(key, props[key])
-        out = JobItem(impl, jobDataset, name, inputs, outputs, triggerHandler)
+        out = JobItem(impl, jobDataset, name, inputs, outputs, triggerHandler, retries)
         return out
 
 class Props(object):

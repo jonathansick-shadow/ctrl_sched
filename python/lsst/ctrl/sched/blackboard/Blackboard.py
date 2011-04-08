@@ -136,6 +136,25 @@ class Blackboard(LockProtected):
                 self.queues.jobsInProgress.append(job)
                 return job
 
+    def rescheduleJob(self, job):
+        """
+        reshedule the given Job as done by moving it from the jobsInProgress
+        queue to the jobsAvailable queue.  If the job is not in the 
+        jobsInProgress queue, an exception will be raised.
+        @param job      the job item to move
+        @return JobItem    the job that was moved 
+        """
+        with self:
+          with self.queues.jobsInProgress:
+            with self.queues.jobsDone:
+                try:
+                    index = self.queues.jobsInProgress.index(job)
+                except ValueError, ex:
+                    raise BlackboardUpdateError("Job not found in jobsInProgress: " +
+                                                job.getProperty(Props.NAME, "(unidentified)"))
+                job = self.queues.jobsInProgress.pop(index)
+                self.queues.jobsAvailable.append(job)
+        
 
     def markJobDone(self, job, success=True):
         """
