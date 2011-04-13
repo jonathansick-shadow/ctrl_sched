@@ -79,6 +79,7 @@ class JobOffice(_AbstractBase, threading.Thread):
 
         self.halt = False
         self.finalDatasetSent = False
+        self.jobOfficeCompletedSent = False
         self.stopTopic = "JobOfficeStop"
         self.stopThread = None
         self.exc = None
@@ -235,6 +236,7 @@ class _BaseJobOffice(JobOffice):
         self.jobTopic = self.policy.get("listen.pipelineEvent")
         self.stopTopic = self.policy.get("listen.stopEvent")
         self.jobOfficeTopic = self.policy.get("listen.jobOfficeEvent")
+        self.jobOfficeStatusTopic = self.policy.get("listen.jobOfficeStatus")
 
         self.highWatermark = self.policy.get("listen.highWatermark")
 
@@ -284,6 +286,8 @@ class _BaseJobOffice(JobOffice):
             self.jobOfficeRcvr = EventReceiver(self.brokerHost,
                                                  self.jobOfficeTopic,
                                                  select)
+            self.jobOfficeStatusEvTrx = EventTransmitter(self.brokerHost,
+                                                        self.jobOfficeStatusTopic)
 
 
                                                    
@@ -313,6 +317,9 @@ class _BaseJobOffice(JobOffice):
                                                  self.jobOfficeTopic,
                                                  select, 
                                                  self.brokerPort);
+            self.jobOfficeStatusEvTrx = EventTransmitter(self.brokerHost,
+                                                   self.jobOfficeStatusTopic, 
+                                                   self.brokerPort)
 
             
     
@@ -363,6 +370,9 @@ class _BaseJobOffice(JobOffice):
 
     def observeStatusOfJobs(self):
         trace = self._trace("observeStatusOfJobs")
+        if self.jobOfficeCompletedSent == True:
+            trace.done()
+            return
         if self.finalDatasetSent == True:
             with self.bb.queues:
                  done = self.bb.queues.jobsInProgress.isEmpty() and self.bb.queues.jobsAvailable.isEmpty()
@@ -372,9 +382,13 @@ class _BaseJobOffice(JobOffice):
                  self.log.log(Log.DEBUG, "observe: jobsInAvailable.isEmpty() = "+ str(self.bb.queues.jobsAvailable.isEmpty()))
                  if done:
                     self.log.log(Log.DEBUG, "observe: done!")
-                    self.halt = True
+                    evnt = self.makeJobOfficeStatusEvent(self.runId, "joboffice:done")
+                    self.jobOfficeStatusEvTrx.publishEvent(evnt)
+                    self.jobOfficeCompletedSent = True
                  else:
                     self.log.log(Log.DEBUG, "observe: NOT done!")
+        else:
+            self.log.log(Log.DEBUG, "finalDatasetSent == False")
         trace.done()
 
     def processJobOfficeEvents(self):
@@ -383,7 +397,9 @@ class _BaseJobOffice(JobOffice):
         if not jevent:
             trace.done()
             return
-        self.finalDatasetSent = True
+        if jevent.getStatus() == "data:completed":
+            self.log.log(Log.DEBUG, "setting finalDatasetSent = True")
+            self.finalDatasetSent = True
         trace.done()
         return
 
@@ -412,7 +428,7 @@ class _BaseJobOffice(JobOffice):
 
     def _logJobDone(self, jobevent):
         try: 
-            self._debug("%s: %s on %s finised %s",
+            self._debug("%s: %s on %s finished %s",
                         (jobevent.getStatus(),
                          jobevent.getPropertySet().getString("pipelineName"),
                          jobevent.getHostId(),
@@ -464,6 +480,8 @@ class _BaseJobOffice(JobOffice):
             if success == False:
                 job.decrementRetries()
                 if job.canRetry() == True:
+                    statusEvent = self.makeJobStatusEvent(job, jevent.getRunId(), "job:rescheduling")
+                    self.jobAssignEvTrx.publishEvent(statusEvent)
                     self.bb.rescheduleJob(job)
                     return True
             self.bb.markJobDone(job, success)
@@ -570,6 +588,18 @@ class _BaseJobOffice(JobOffice):
 
         trace.done()
         return out
+
+    def makeJobOfficeStatusEvent(self, runId, status):
+        props = PropertySet()
+        props.set("STATUS",status)
+        return StatusEvent(runId, self.originatorId, props)
+
+    def makeJobStatusEvent(self, job, runId, status):
+        props = PropertySet()
+        props.set("identity", serializePolicy(job.getJobIdentity().toPolicy()))
+        props.set("STATUS", status)
+        props.set("name", job.getName())
+        return StatusEvent(runId, self.originatorId, props)
 
     def makeJobCommandEvent(self, job, pipeline, runId=""):
         """
