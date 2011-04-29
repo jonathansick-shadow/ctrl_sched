@@ -376,19 +376,10 @@ class _BaseJobOffice(JobOffice):
         if self.finalDatasetSent == True:
             with self.bb.queues:
                  done = self.bb.queues.jobsInProgress.isEmpty() and self.bb.queues.jobsAvailable.isEmpty()
-                 self.log.log(Log.DEBUG, "observe: jobsInProgress.length() = "+ str(self.bb.queues.jobsInProgress.length()))
-                 self.log.log(Log.DEBUG, "observe: jobsInProgress.isEmpty() = "+ str(self.bb.queues.jobsInProgress.isEmpty()))
-                 self.log.log(Log.DEBUG, "observe: jobsInAvailable.length() = "+ str(self.bb.queues.jobsAvailable.length()))
-                 self.log.log(Log.DEBUG, "observe: jobsInAvailable.isEmpty() = "+ str(self.bb.queues.jobsAvailable.isEmpty()))
                  if done:
-                    self.log.log(Log.DEBUG, "observe: done!")
                     evnt = self.makeJobOfficeStatusEvent(self.runId, "joboffice:done")
                     self.jobOfficeStatusEvTrx.publishEvent(evnt)
                     self.jobOfficeCompletedSent = True
-                 else:
-                    self.log.log(Log.DEBUG, "observe: NOT done!")
-        else:
-            self.log.log(Log.DEBUG, "finalDatasetSent == False")
         trace.done()
 
     def processJobOfficeEvents(self):
@@ -484,6 +475,9 @@ class _BaseJobOffice(JobOffice):
                     self.jobAssignEvTrx.publishEvent(statusEvent)
                     self.bb.rescheduleJob(job)
                     return True
+                else:
+                    statusEvent = self.makeJobStatusEvent(job, jevent.getRunId(), "job:abandoned")
+                    self.jobAssignEvTrx.publishEvent(statusEvent)
             self.bb.markJobDone(job, success)
         return True
 
@@ -718,6 +712,8 @@ class DataTriggeredJobOffice(_BaseJobOffice):
         @param event    the data event.  
         @return bool    true if the event was processed.
         """
+        statusEvent = self.makeJobOfficeStatusEvent(event.getRunId(), "joboffice:datareceived")
+        self.jobOfficeStatusEvTrx.publishEvent(statusEvent)
         out = 0
         dsps = event.getPropertySet().getArrayString("dataset")
         for dsp in dsps:
