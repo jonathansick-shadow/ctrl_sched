@@ -255,10 +255,9 @@ class BasicBlackboardItem(ImplBlackboardItem):
     A simple, generic BlackboardItem.
 
     It supports the following common properties:
-    @verbatim
-    NAME       a name for the item.  There is no expectation that it is 
+    @verbatim NAME       a name for the item.  There is no expectation that it is 
                  unique across items, but typically it is.
-    @endverbatim
+    @end verbatim
 
     These are normally created via createItem() which chooses the internal
     representation of the data.
@@ -314,7 +313,7 @@ class DataProductItem(BasicBlackboardItem):
                  successfully created.  If False, an attempt to create the
                  product was made but it was unsuccessful.
     DATASET    a policy-serialization of a Dataset description
-    @endverbatim
+    @end verbatim
     """
     SUCCESS  = "SUCCESS"
     DATASET  = "DATASET"
@@ -402,7 +401,7 @@ class PipelineItem(BasicBlackboardItem):
                   unique across items, but typically it is.
     ORIGINATOR  a unique identifier for the instance of the pipeline that
                   this item represents.  
-    @endverbatim
+    @end verbatim
 
     These are normally created via createItem() which chooses the internal
     representation of the data.
@@ -473,7 +472,7 @@ class JobItem(BasicBlackboardItem):
     INPUT      a list of the datasets that serve as input a pipeline job
     OUTPUT     a list of the datasets will be produced by a pipeline job
     RETRIES    the number of times to retry this job
-    @endverbatim
+    @end verbatim
 
     These are normally created via createItem() which chooses the internal
     representation of the data.
