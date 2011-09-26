@@ -182,6 +182,11 @@ class DataTriggeredScheduler(Scheduler):
         if pol.exists("template"):
             self.nametmpl = pol.getString("template")
         self.nameNumber = pol.getInt("initCounter")
+        
+        self.jobRetries = None
+        if policy.exists("job.retries"):
+            self.jobRetries = policy.getInt("job.retries")
+
 
     def processDataset(self, dataset, success=None):
         """
@@ -242,7 +247,7 @@ class DataTriggeredScheduler(Scheduler):
                 jobds = self._determineJobIdentity(outputs, inputs)
                 name = self.createName(jobds)
                 
-                job = JobItem.createItem(jobds, name, inputs,outputs, trighdlr)
+                job = JobItem.createItem(jobds, name, inputs,outputs, trighdlr, retries=self.jobRetries)
                 job.setNeededDataset(recognized)
                 self.bb.queues.jobsPossible.append(job)
 

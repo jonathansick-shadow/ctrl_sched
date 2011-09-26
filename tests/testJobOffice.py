@@ -81,8 +81,7 @@ class DataTriggeredJobOfficeTestCase(unittest.TestCase):
     def setUp(self):
         policy = Policy.createPolicy(policyFile)
         # pdb.set_trace()
-        self.joboffice = DataTriggeredJobOffice(testdir, policy=policy,
-                                                brokerHost=brokerhost)
+        self.joboffice = DataTriggeredJobOffice(testdir, policy=policy, log=None, runId="testing", brokerHost=brokerhost)
         self.joboffice.log.setThreshold(self.joboffice.log.WARN)
         self.jodir = os.path.join(testdir, "ccdassembly")
         

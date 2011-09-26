@@ -124,6 +124,26 @@ definitions: {
                default: "JobOfficeStop"
             }
 
+            jobOfficeEvent: {
+                type: string
+                description: "the event topic name that the jobOffice will
+                                receive events sent from the outside (ie, non-pipeline 
+                                workers). Does not received stop events on this topic."
+                minOccurs: 0
+                maxOccurs: 1
+                default: "JobOfficeTopic"
+            }
+
+            jobOfficeStatus: {
+                type: string
+                description: "the event topic name that the jobOffice will
+                                use to transmit status."
+                minOccurs: 0
+                maxOccurs: 1
+                default: "JobOfficeStatus"
+            }
+
+
             initialWait: {
                type:  int
                description:  "the number of milliseconds to wait for the 
