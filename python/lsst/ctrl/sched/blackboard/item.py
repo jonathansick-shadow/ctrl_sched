@@ -255,7 +255,8 @@ class BasicBlackboardItem(ImplBlackboardItem):
     A simple, generic BlackboardItem.
 
     It supports the following common properties:
-    @verbatim NAME       a name for the item.  There is no expectation that it is 
+    @verbatim 
+    NAME       a name for the item.  There is no expectation that it is 
                  unique across items, but typically it is.
     @end verbatim
 
