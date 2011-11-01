@@ -1,44 +1,6 @@
 # -*- python -*-
-#
-# Setup our environment
-#
-import glob, os.path, re, sys
-import lsst.SConsUtils as scons
-
-env = scons.makeEnv("ctrl_sched",
-                    r"$HeadURL$",
-                    [["pex_logging"],
-                     ["pex_policy"]
-                    ])
-
-pkg = env["eups_product"]
-for d in Split("doc tests"):
-    if os.path.isdir(d):
-        try:
-            SConscript(os.path.join(d, "SConscript"))
-        except Exception, e:
-            print >> sys.stderr, "%s: %s" % (os.path.join(d, "SConscript"), e)
-
-env['IgnoreFiles'] = r"(~$|\.pyc$|^\.svn$|\.o$)"
-
-Alias("install", [env.Install(env['prefix'], "python"),
-#                  env.Install(env['prefix'], "doc"),
-                  env.Install(env['prefix'], "examples"),
-                  env.Install(env['prefix'], "policies"),
-                  env.Install(env['prefix'], "bin"),
-                  env.InstallAs(os.path.join(env['prefix'], "doc", "doxygen"),
-                                os.path.join("doc", "htmlDir")),
-                  env.InstallEups(env['prefix'] + "/ups")])
-
-
-
-scons.CleanTree(r"*~ core *.so *.os *.o")
-
-#
-# Build TAGS files
-#
-files = scons.filesToTag()
-if files:
-    env.Command("TAGS", files, "etags -o $TARGET $SOURCES")
-
-env.Declare()
+from lsst.sconsUtils import scripts
+scripts.BasicSConstruct(
+    packageName="ctrl_sched",
+    versionString=r"$HeadURL",
+)
