@@ -218,13 +218,13 @@ class _BaseJobOffice(JobOffice):
             self.policy.mergeDefaults(defaults)
             
         # instantiate parent class
-        self.name = self.policy.get("name")
+        name = self.policy.get("name")
         persistDir = self.policy.get("persist.dir") % {"schedroot": rootdir, 
-                                                       "name": self.name    }
+                                                       "name": name    }
         if not os.path.exists(persistDir):
             os.makedirs(persistDir)
         JobOffice.__init__(self, persistDir, log, runId, True)
-        self.setName(self.name)
+        self.setName(name)
 
         # logger
         self.log = Log(self.log, self.name)
