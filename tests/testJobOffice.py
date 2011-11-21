@@ -202,6 +202,9 @@ class DataTriggeredJobOfficeTestCase(unittest.TestCase):
             ds = copy.deepcopy(ds)
             ds.ids["ampid"] += 1
 
+        # Wait for events
+        time.sleep(2.0)
+
         # pdb.set_trace()
         self.joboffice.processDataEvents()
         
@@ -215,6 +218,7 @@ class DataTriggeredJobOfficeTestCase(unittest.TestCase):
         ps.set("dataset", serializePolicy(ds.toPolicy()))
         devent = StatusEvent("testing", originatorId, ps)
         trx.publishEvent(devent);
+        time.sleep(2.0)
         self.joboffice.processDataEvents()
         
         with self.joboffice.bb.queues:
@@ -247,6 +251,7 @@ class DataTriggeredJobOfficeTestCase(unittest.TestCase):
         
         trx = EventTransmitter(brokerhost, "CcdAssemblyJob")
         trx.publishEvent(pevent)
+        time.sleep(2.0)
 
         self.joboffice.receiveReadyPipelines()
 
@@ -313,6 +318,7 @@ class DataTriggeredJobOfficeTestCase(unittest.TestCase):
         pevent = StatusEvent("testing", originatorId, ps)
         trx = EventTransmitter(brokerhost, "CcdAssemblyJob")
         trx.publishEvent(pevent)
+        time.sleep(2.0)
 
         self.joboffice.processDoneJobs()
         with self.joboffice.bb.queues:
@@ -333,6 +339,7 @@ class DataTriggeredJobOfficeTestCase(unittest.TestCase):
         ps.set("STATUS", "job:ready")
         pevent = StatusEvent("testing", originatorId, ps)
         trxpipe.publishEvent(pevent)
+        time.sleep(2.0)
 
         self.joboffice.managePipelines(1)
         
@@ -359,6 +366,8 @@ class DataTriggeredJobOfficeTestCase(unittest.TestCase):
             ds = copy.deepcopy(ds)
             ds.ids["ampid"] += 1
 
+        time.sleep(2.0)
+
         self.joboffice.managePipelines(1)
         
         with self.joboffice.bb.queues:
@@ -373,6 +382,7 @@ class DataTriggeredJobOfficeTestCase(unittest.TestCase):
         ps.set("success", True)
         jevent = StatusEvent("testing", originatorId, ps)
         trxpipe.publishEvent(jevent)
+        time.sleep(2.0)
 
         self.joboffice.managePipelines(1)
         
@@ -400,7 +410,7 @@ class DataTriggeredJobOfficeTestCase(unittest.TestCase):
         ps.set("STATUS", "job:ready")
         pevent = StatusEvent("testing", originatorId, ps)
         trxpipe.publishEvent(pevent)
-        time.sleep(1.0)
+        time.sleep(2.0)
 
         with self.joboffice.bb.queues:
           self.assertEquals(self.joboffice.bb.queues.pipelinesReady.length(),1)
@@ -424,7 +434,7 @@ class DataTriggeredJobOfficeTestCase(unittest.TestCase):
 
             ds = copy.deepcopy(ds)
             ds.ids["ampid"] += 1
-        time.sleep(1.0)
+        time.sleep(2.0)
 
         with self.joboffice.bb.queues:
           self.assertEquals(self.joboffice.bb.queues.jobsInProgress.length(),1)
@@ -438,7 +448,7 @@ class DataTriggeredJobOfficeTestCase(unittest.TestCase):
         ps.set("success", True)
         jevent = StatusEvent("testing", originatorId, ps)
         trxpipe.publishEvent(jevent)
-        time.sleep(1.0)
+        time.sleep(2.0)
 
         with self.joboffice.bb.queues:
           self.assertEquals(self.joboffice.bb.queues.jobsInProgress.length(),0)
