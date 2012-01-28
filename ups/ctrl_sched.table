@@ -5,7 +5,8 @@ setupRequired(pex_harness >= 4.6.0.0)
 setupRequired(ctrl_events >= 4.6.0.0)
 
 setupOptional(obs_lsstSim >= 4.6.0.0)
-setupOptional(obs_cfht >= 4.6.0.0)
+# Removed until obs_cfht is reintegrated into the LSST stack  27 Jan 2012
+#setupOptional(obs_cfht >= 4.6.0.0)
 
 envPrepend(PYTHONPATH, ${PRODUCT_DIR}/python)
 envPrepend(PATH, ${PRODUCT_DIR}/bin)
