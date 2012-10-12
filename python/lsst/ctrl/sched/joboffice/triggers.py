@@ -33,6 +33,7 @@ from lsst.ctrl.sched import Dataset, utils
 from lsst.ctrl.sched.base import _AbstractBase
 
 import os, copy
+import importlib
 
 # NOTE:  the two trigger implementations do not use the Trigger API in
 # a consistent way; the Trigger API needs to be reworked.
@@ -460,7 +461,10 @@ class MapperTrigger(Trigger):
         mapperPol = policy.get("mapper")
         clsname = mapperPol.get("className")
         mapperConfig = mapperPol.get("configuration")
-        mapper = butlerFactory._importMapper(clsname, mapperConfig)
+        components = clsname.rsplit(".", 1)
+        module = importlib.import_module(".".join(components[:-1]))
+        cls = getattr(module, components[-1])
+        mapper = cls(root=mapperConfig.get("root"))
         
         lookupType = mapperPol.get("lookupType")
         granKey = mapperPol.get("idGranularity")
