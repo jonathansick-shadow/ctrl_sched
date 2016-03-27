@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
-# 
+#
 # LSST Data Management System
 # Copyright 2008, 2009, 2010 LSST Corporation.
-# 
+#
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
 #
@@ -11,14 +11,14 @@
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
-# You should have received a copy of the LSST License Statement and 
-# the GNU General Public License along with this program.  If not, 
+#
+# You should have received a copy of the LSST License Statement and
+# the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
@@ -36,10 +36,12 @@ import time
 from lsst.ctrl.sched import Dataset
 from lsst.pex.policy import Policy
 
+
 class DatasetTestCase(unittest.TestCase):
 
     def setUp(self):
         pass
+
     def tearDown(self):
         pass
 
@@ -67,7 +69,7 @@ class DatasetTestCase(unittest.TestCase):
         self.assertEquals(ds.ids["visitid"], visitid)
 
         # pdb.set_trace()
-        ds = Dataset(type, path, False, {"ccdid": ccdid, "visitid": visitid })
+        ds = Dataset(type, path, False, {"ccdid": ccdid, "visitid": visitid})
         self.assertEquals(ds.type, type)
         self.assertEquals(ds.path, path)
         self.assert_(not ds.valid)
@@ -75,7 +77,7 @@ class DatasetTestCase(unittest.TestCase):
         self.assertEquals(ds.ids["ccdid"], ccdid)
         self.assertEquals(ds.ids["visitid"], visitid)
 
-        ds = Dataset(type, ids={"ccdid": ccdid, "visitid": visitid })
+        ds = Dataset(type, ids={"ccdid": ccdid, "visitid": visitid})
         self.assertEquals(ds.type, type)
         self.assert_(ds.path is None)
         self.assert_(ds.ids is not None)
@@ -88,7 +90,7 @@ class DatasetTestCase(unittest.TestCase):
         ccdid = 12
         visitid = 88
 
-        ds = Dataset(type, ids={"ccdid": ccdid, "visitid": visitid })
+        ds = Dataset(type, ids={"ccdid": ccdid, "visitid": visitid})
         self.assertEquals(ds.toString(),
                           "%s-ccdid%s-visitid%s" % (type, ccdid, visitid))
         # print str(ds)
@@ -158,7 +160,7 @@ class DatasetTestCase(unittest.TestCase):
         ds2 = Dataset(type, path, ccdid=ccdid, visitid=visitid, ampid=5)
         self.assertNotEquals(ds1, ds2)
         self.assertNotEquals(ds2, ds1)
-        
+
         ds2 = Dataset("junk", path, ccdid=ccdid, visitid=visitid)
         self.assertNotEquals(ds1, ds2)
         self.assertNotEquals(ds2, ds1)
@@ -166,14 +168,13 @@ class DatasetTestCase(unittest.TestCase):
         ds2 = Dataset(type)
         self.assertNotEquals(ds1, ds2)
         self.assertNotEquals(ds2, ds1)
-        
+
         ds2 = Dataset(None, ccdid=ccdid, visitid=visitid)
         self.assertNotEquals(ds1, ds2)
         self.assertNotEquals(ds2, ds1)
         ds1 = Dataset(None, ccdid=ccdid, visitid=visitid)
         self.assertEquals(ds1, ds2)
         self.assertEquals(ds2, ds1)
-        
 
 
 __all__ = "DatasetTestCase".split()

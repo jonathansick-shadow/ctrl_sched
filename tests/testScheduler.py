@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
-# 
+#
 # LSST Data Management System
 # Copyright 2008, 2009, 2010 LSST Corporation.
-# 
+#
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
 #
@@ -11,14 +11,14 @@
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
-# You should have received a copy of the LSST License Statement and 
-# the GNU General Public License along with this program.  If not, 
+#
+# You should have received a copy of the LSST License Statement and
+# the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
@@ -54,10 +54,12 @@ locations = PropertySet()
 locations.set("input", testdir)
 LogicalLocation.setLocationMap(locations)
 
+
 class AbstractSchedulerTestCase(unittest.TestCase):
 
     def setUp(self):
         pass
+
     def tearDown(self):
         pass
 
@@ -69,13 +71,14 @@ class AbstractSchedulerTestCase(unittest.TestCase):
         self.assertRaises(RuntimeError, t.processDataset, None, True)
         # self.assertRaises(RuntimeError, t.makeJobsAvailable)
 
+
 class DataTriggeredSchedulerTestCase(unittest.TestCase):
 
     def setUp(self):
         self.bb = Blackboard(bbdir)
         self.sched = None
         self.logger = Log(rootlogger, "sched")
-        
+
     def tearDown(self):
         self.logger.setThreshold(Log.INHERIT_THRESHOLD)
         if os.path.exists(bbdir):
@@ -99,7 +102,7 @@ class DataTriggeredSchedulerTestCase(unittest.TestCase):
                                                   "ccdassembly-joboffice.paf"))
         spolicy = policy.getPolicy("schedule")
         sched = DataTriggeredScheduler(self.bb, spolicy, self.logger)
-        
+
         ds = Dataset("PostISR", ampid=3)
         self.assertEquals(sched.createName(ds), "Job-1")
 
@@ -109,10 +112,9 @@ class DataTriggeredSchedulerTestCase(unittest.TestCase):
         spolicy = policy.getPolicy("schedule")
         spolicy.set("job.name.template", "%(type)s-v%(ampid)s")
         sched = DataTriggeredScheduler(self.bb, spolicy, self.logger)
-        
+
         ds = Dataset("PostISR", ampid=3)
         self.assertEquals(sched.createName(ds), "PostISR-v3")
-
 
     def testProcessDataset(self):
         with self.bb.queues:
@@ -134,7 +136,7 @@ class DataTriggeredSchedulerTestCase(unittest.TestCase):
             self.assertEquals(job.getName(), "Job-1")
             self.assertEquals(job.triggerHandler.getNeededDatasetCount(), 15)
             self.assertEquals(self.sched.nameNumber, 2)
-    
+
         ds = Dataset("PostISR", visitid=95, ccdid=22, snapid=0, ampid=15)
         self.sched.processDataset(ds)
 
@@ -202,7 +204,8 @@ idpolicy = """#<?cfg paf policy ?>
   id: ccdid
   id: snapid
 """
-        
+
+
 class DataTriggeredSchedulerTestCase2(unittest.TestCase):
     """
     test for a specific (unticketed) coding bug in _determineJobIdentity().
@@ -212,7 +215,7 @@ class DataTriggeredSchedulerTestCase2(unittest.TestCase):
         self.bb = Blackboard(bbdir)
         self.sched = None
         self.logger = Log(rootlogger, "sched")
-        
+
     def tearDown(self):
         self.logger.setThreshold(Log.INHERIT_THRESHOLD)
         if os.path.exists(bbdir):
@@ -230,7 +233,7 @@ class DataTriggeredSchedulerTestCase2(unittest.TestCase):
         # manipulate the policy
         idp = Policy.createPolicy(PolicyString(idpolicy))
         spolicy.set("job.identity", idp)
-        
+
         self.sched = DataTriggeredScheduler(self.bb, spolicy, self.logger)
 
         # pdb.set_trace()
@@ -244,7 +247,7 @@ class DataTriggeredSchedulerTestCase2(unittest.TestCase):
             self.assertEquals(job.getName(), "Job-1")
             self.assertEquals(job.triggerHandler.getNeededDatasetCount(), 15)
             self.assertEquals(self.sched.nameNumber, 2)
-    
+
         ds = Dataset("PostISR", visitid=95, ccdid=22, snapid=0, ampid=15)
         self.sched.processDataset(ds)
 
@@ -280,14 +283,14 @@ class DataTriggeredSchedulerTestCase2(unittest.TestCase):
             self.assertEquals(job.triggerHandler.getNeededDatasetCount(), 0)
             self.assert_(job.isReady())
 
-        
+
 class ButlerTriggeredSchedulerTestCase(unittest.TestCase):
 
     def setUp(self):
         self.bb = Blackboard(bbdir)
         self.sched = None
         self.logger = Log(rootlogger, "sched")
-        
+
     def tearDown(self):
         if os.path.exists(bbdir):
             os.system("rm -rf %s" % bbdir)
@@ -310,13 +313,13 @@ class ButlerTriggeredSchedulerTestCase(unittest.TestCase):
                                                   "srcAssoc-joboffice.paf"))
         spolicy = policy.getPolicy("schedule")
         sched = ButlerTriggeredScheduler(self.bb, spolicy, self.logger)
-        
+
         ds = Dataset("PostISR", ampid=3)
         self.assertEquals(sched.createName(ds), "Job-1")
 
     def testProcessDataset(self):
         # self.logger.setThreshold(Log.DEBUG)
-        
+
         with self.bb.queues:
             self.assertEquals(self.bb.queues.dataAvailable.length(), 0)
 
@@ -341,34 +344,34 @@ class ButlerTriggeredSchedulerTestCase(unittest.TestCase):
             self.assertEquals(ods[0].type, "source")
             self.assert_(ods[0].ids.has_key("skyTile"))
             self.assertEquals(self.sched.nameNumber, 2)
-    
+
         # pdb.set_trace()
-        dss = [ Dataset("src", visit=85408535, raft="2,2", sensor="0,2"),
-                Dataset("src", visit=85408535, raft="2,2", sensor="1,1"),
-                Dataset("src", visit=85408535, raft="2,2", sensor="1,2"),
-                Dataset("src", visit=85408535, raft="2,2", sensor="2,0"),
-                Dataset("src", visit=85408535, raft="2,2", sensor="2,1"),
-                Dataset("src", visit=85408535, raft="2,3", sensor="1,0"),
-                Dataset("src", visit=85408535, raft="2,3", sensor="2,0"),
-                Dataset("src", visit=85408535, raft="2,3", sensor="2,1"),
-                Dataset("src", visit=85408535, raft="3,2", sensor="0,0"),
-                Dataset("src", visit=85408535, raft="3,2", sensor="0,1"),
-                Dataset("src", visit=85408535, raft="3,2", sensor="0,2"),
-                Dataset("src", visit=85408535, raft="3,2", sensor="1,2"),
-                Dataset("src", visit=85408535, raft="3,3", sensor="1,0") ]
+        dss = [Dataset("src", visit=85408535, raft="2,2", sensor="0,2"),
+               Dataset("src", visit=85408535, raft="2,2", sensor="1,1"),
+               Dataset("src", visit=85408535, raft="2,2", sensor="1,2"),
+               Dataset("src", visit=85408535, raft="2,2", sensor="2,0"),
+               Dataset("src", visit=85408535, raft="2,2", sensor="2,1"),
+               Dataset("src", visit=85408535, raft="2,3", sensor="1,0"),
+               Dataset("src", visit=85408535, raft="2,3", sensor="2,0"),
+               Dataset("src", visit=85408535, raft="2,3", sensor="2,1"),
+               Dataset("src", visit=85408535, raft="3,2", sensor="0,0"),
+               Dataset("src", visit=85408535, raft="3,2", sensor="0,1"),
+               Dataset("src", visit=85408535, raft="3,2", sensor="0,2"),
+               Dataset("src", visit=85408535, raft="3,2", sensor="1,2"),
+               Dataset("src", visit=85408535, raft="3,3", sensor="1,0")]
 
         i = 1
         for ds in dss:
             # pdb.set_trace()
             self.sched.processDataset(ds)
             i += 1
-            
+
             with self.bb.queues:
                 self.assertEquals(self.bb.queues.dataAvailable.length(), i)
                 job = self.bb.queues.jobsPossible.get(0)
                 self.assertEquals(job.triggerHandler.getNeededDatasetCount(),
                                   15-i)
-                
+
         with self.bb.queues:
             # 9 is empirical; is it really right, though?
             self.assertEquals(self.bb.queues.jobsPossible.length(), 9)
@@ -386,9 +389,6 @@ class ButlerTriggeredSchedulerTestCase(unittest.TestCase):
             self.assertEquals(job.getName(), "Job-2")
             self.assert_(not job.isReady())
 
-        
-    
-    
 
 __all__ = "AbstractSchedulerTestCase DataTriggeredSchedulerTestCase DataTriggeredSchedulerTestCase2 ButlerTriggeredSchedulerTestCase".split()
 

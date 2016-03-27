@@ -1,7 +1,7 @@
-# 
+#
 # LSST Data Management System
 # Copyright 2008, 2009, 2010 LSST Corporation.
-# 
+#
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
 #
@@ -9,14 +9,14 @@
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
-# You should have received a copy of the LSST License Statement and 
-# the GNU General Public License along with this program.  If not, 
+#
+# You should have received a copy of the LSST License Statement and
+# the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
@@ -31,7 +31,10 @@ from lsst.daf.base import PropertySet
 from lsst.ctrl.sched import Dataset
 from lsst.pex.policy import Policy, PolicyString, PAFWriter
 
-import os, time, random
+import os
+import time
+import random
+
 
 def serializePolicy(policy):
     """
@@ -42,12 +45,14 @@ def serializePolicy(policy):
     writer.write(policy)
     return writer.toString()
 
+
 def unserializePolicy(policystr):
     """
     turn PAF-serialized string back into a Policy.  This is the opposite
     of serializePolicy().
     """
     return Policy.createPolicy(PolicyString(policystr))
+
 
 def serializeDataset(dataset):
     """
@@ -56,6 +61,7 @@ def serializeDataset(dataset):
     """
     return serializePolicy(dataset.toPolicy())
 
+
 def unserializeDataset(datasetstr):
     """
     turn PAF-serialized string back into a Dataset.  This is the opposite
@@ -63,12 +69,14 @@ def unserializeDataset(datasetstr):
     """
     return Dataset.fromPolicy(unserializePolicy(datasetstr))
 
+
 def serializeDatasetList(datalist):
     """
     convert a list of Datasets into a list of PAF-encoded strings.  This is
     useful for encoding Dataset data into PropertySets.
     """
     return map(lambda d: serializeDataset(d), datalist)
+
 
 def unserializeDatasetList(dstrlist):
     """
@@ -86,7 +94,7 @@ def createRunId(base="test", lim=100000):
     width = len(str(lim))-1
     fmt = "%%s%%0%dd" % width
     return fmt % (base, random.randrange(lim))
-    
+
 
 class EventSender(object):
     """
@@ -143,7 +151,7 @@ class EventSender(object):
         """
         if not originatorId:
             originatorId = self.origid
-        return _CommandEventFactory(self.runid,status,originatorId,destid,props)
+        return _CommandEventFactory(self.runid, status, originatorId, destid, props)
 
     def createStopEvent(self, pipelineName, destid=None, urgency=1):
         """
@@ -151,8 +159,8 @@ class EventSender(object):
         @param destid    the destination ID (optional)
         @param props     the properties to include along wiht the Event
         """
-        props = {"pipelineName": pipelineName, "level": urgency }
-        return _CommandEventFactory(self.runid,"stop",self.origid,destid,props)
+        props = {"pipelineName": pipelineName, "level": urgency}
+        return _CommandEventFactory(self.runid, "stop", self.origid, destid, props)
 
     def createPipelineReadyEvent(self, pipelineName, originatorId=None):
         """
@@ -172,7 +180,7 @@ class EventSender(object):
 
         This actually returns an event factory class.
         """
-        out = self.createCommandEvent("job:assign", pipelineId, 
+        out = self.createCommandEvent("job:assign", pipelineId,
                                       {"pipelineName": pipelineName},
                                       originatorId)
         if identity:
@@ -201,7 +209,7 @@ class EventSender(object):
                                       {"pipelineName": pipelineName},
                                       originatorId)
 
-    def createJobDoneEvent(self, pipelineName, success=True,originatorId=None):
+    def createJobDoneEvent(self, pipelineName, success=True, originatorId=None):
         """
         create a candidate event for signalling that a pipeline is ready
         for a job.
@@ -210,7 +218,7 @@ class EventSender(object):
         """
         return self.createStatusEvent("job:done",
                                       {"pipelineName": pipelineName,
-                                       "success": success            },
+                                       "success": success},
                                       originatorId)
 
     def createDatasetEvent(self, pipelineName, datasets=None, success=True,
@@ -223,7 +231,7 @@ class EventSender(object):
         """
         out = self.createStatusEvent("available",
                                      {"pipelineName": pipelineName,
-                                      "success": success            },
+                                      "success": success},
                                      originatorId)
 
         if datasets:
@@ -233,7 +241,7 @@ class EventSender(object):
                 out.addDataset("dataset", ds)
 
         return out
-    
+
 
 class _EventFactory(object):
 
@@ -258,6 +266,7 @@ class _EventFactory(object):
     def setRunId(self, id):
         """set the Run ID"""
         self.runid = runid
+
     def getRunId(self):
         """set the Run ID"""
         return self.runid
@@ -265,6 +274,7 @@ class _EventFactory(object):
     def setProperty(self, name, val):
         """set the value of a named property"""
         self.props.set(name, val)
+
     def getProperty(self, name):
         """get the value of a named property"""
         return self.props.getString(name)
@@ -272,9 +282,11 @@ class _EventFactory(object):
     def addDataset(self, propname, ds):
         """add a dataset to the event"""
         self.props.add(propname, serializeDataset(ds))
+
     def getDatasets(self, propname):
         """return the datasets attached to the event"""
         return unserializeDatasetList(self.props.getArrayString(propname))
+
 
 class _StatusEventFactory(_EventFactory):
     """
@@ -294,6 +306,7 @@ class _StatusEventFactory(_EventFactory):
     def getStatus(self):
         """return the value of the STATUS property"""
         return self.getProperty(ev.Event.STATUS)
+
     def setStatus(self, val):
         """set the value of the STATUS property"""
         return self.setProperty(ev.Event.STATUS, val)
@@ -301,9 +314,11 @@ class _StatusEventFactory(_EventFactory):
     def getOriginatorId(self):
         """return the value of the originator ID"""
         return self.origid
+
     def setOriginatorId(self, val):
         """set the value of the originator ID"""
         self.origid = val
+
 
 class _CommandEventFactory(_StatusEventFactory):
     """
@@ -317,21 +332,23 @@ class _CommandEventFactory(_StatusEventFactory):
 
     def create(self):
         """create a new instance of the event"""
-        return ev.CommandEvent(self.runid, self.origid,self.destid, self.props)
+        return ev.CommandEvent(self.runid, self.origid, self.destid, self.props)
 
     def getDestinationId(self):
         """return the value of the destination ID"""
         return self.destid
+
     def setDestinationId(self, val):
         """set the value of the destination ID"""
         self.destid = val
+
 
 def importClass(clsname):
     """
     return a class object with the given fully-qualified name.
     """
     # split into package and unqualified name
-    pathtokens = clsname.rsplit('.', 1) 
+    pathtokens = clsname.rsplit('.', 1)
     unqualified = pathtokens.pop().strip()
     package = pathtokens[0]
 

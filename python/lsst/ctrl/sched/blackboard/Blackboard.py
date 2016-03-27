@@ -1,7 +1,7 @@
-# 
+#
 # LSST Data Management System
 # Copyright 2008, 2009, 2010 LSST Corporation.
-# 
+#
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
 #
@@ -9,14 +9,14 @@
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
-# You should have received a copy of the LSST License Statement and 
-# the GNU General Public License along with this program.  If not, 
+#
+# You should have received a copy of the LSST License Statement and
+# the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
@@ -26,12 +26,13 @@ the actual Blackboard class
 from __future__ import with_statement
 
 from queue import DataQueue, JobQueue
-from item  import Props
+from item import Props
 from exceptions import *
 from lsst.pex.logging import Log
 from lsst.utils.multithreading import LockProtected, SharedData
 
 import os
+
 
 class Blackboard(LockProtected):
     """
@@ -53,7 +54,7 @@ class Blackboard(LockProtected):
 
         # the encompassing persistence directory
         self._persistDir = persistDir
-        
+
         parent = os.path.dirname(self._persistDir)
         if not os.path.isdir(parent) or not os.path.exists(parent):
             raise BlackboardPersistError("Unable to create queue directory: %s: directory not found" % parent)
@@ -71,13 +72,13 @@ class Blackboard(LockProtected):
         # prep the queues
         self.queues = lock
         with self.queues:
-        
+
             # a queue representing available datasets to be processed.
             dir = os.path.join(self._persistDir, "dataAvailable")
             self.queues.dataAvailable = DataQueue(dir, self._log, lock)
 
             # a queue of datasets that have beend bundled into jobs and queued
-            # for processing.  
+            # for processing.
             dir = os.path.join(self._persistDir, "jobsPossible")
             self.queues.jobsPossible = JobQueue(dir, self._log, lock)
 
@@ -99,7 +100,7 @@ class Blackboard(LockProtected):
             self.queues.pipelinesReady = JobQueue(dir, self._log, lock)
 
         self._dbfail = 0
-        
+
     def makeJobAvailable(self, job):
         """
         transfer a job form the jobsPossible queue to the jobsAvailable
@@ -107,16 +108,15 @@ class Blackboard(LockProtected):
         will be raised.  The moved job will be returned.
         """
         with self:
-          with self.queues.jobsPossible:
-            with self.queues.jobsAvailable:
-                try:
-                    index = self.queues.jobsPossible.index(job)
-                except ValueError, ex:
-                    raise BlackboardUpdateError("Job not found in jobsPossible: " +
-                                                job.getProperty(Props.NAME, "(unidentified)"))
-                job = self.queues.jobsPossible.pop(index)
-                self.queues.jobsAvailable.append(job)
-                
+            with self.queues.jobsPossible:
+                with self.queues.jobsAvailable:
+                    try:
+                        index = self.queues.jobsPossible.index(job)
+                    except ValueError, ex:
+                        raise BlackboardUpdateError("Job not found in jobsPossible: " +
+                                                    job.getProperty(Props.NAME, "(unidentified)"))
+                    job = self.queues.jobsPossible.pop(index)
+                    self.queues.jobsAvailable.append(job)
 
     def allocateNextJob(self, pipelineId):
         """
@@ -127,14 +127,14 @@ class Blackboard(LockProtected):
         @return JobItem    the job that was moved 
         """
         with self:
-          with self.queues.jobsAvailable:
-            if self.queues.jobsAvailable.isEmpty():
-                raise EmptyQueueError("jobsAvailable")
-            with self.queues.jobsInProgress:
-                job = self.queues.jobsAvailable.pop()
-                job.setPipelineId(pipelineId)
-                self.queues.jobsInProgress.append(job)
-                return job
+            with self.queues.jobsAvailable:
+                if self.queues.jobsAvailable.isEmpty():
+                    raise EmptyQueueError("jobsAvailable")
+                with self.queues.jobsInProgress:
+                    job = self.queues.jobsAvailable.pop()
+                    job.setPipelineId(pipelineId)
+                    self.queues.jobsInProgress.append(job)
+                    return job
 
     def rescheduleJob(self, job):
         """
@@ -145,16 +145,15 @@ class Blackboard(LockProtected):
         @return JobItem    the job that was moved 
         """
         with self:
-          with self.queues.jobsInProgress:
-            with self.queues.jobsDone:
-                try:
-                    index = self.queues.jobsInProgress.index(job)
-                except ValueError, ex:
-                    raise BlackboardUpdateError("Job not found in jobsInProgress: " +
-                                                job.getProperty(Props.NAME, "(unidentified)"))
-                job = self.queues.jobsInProgress.pop(index)
-                self.queues.jobsAvailable.append(job)
-        
+            with self.queues.jobsInProgress:
+                with self.queues.jobsDone:
+                    try:
+                        index = self.queues.jobsInProgress.index(job)
+                    except ValueError, ex:
+                        raise BlackboardUpdateError("Job not found in jobsInProgress: " +
+                                                    job.getProperty(Props.NAME, "(unidentified)"))
+                    job = self.queues.jobsInProgress.pop(index)
+                    self.queues.jobsAvailable.append(job)
 
     def markJobDone(self, job, success=True):
         """
@@ -168,13 +167,13 @@ class Blackboard(LockProtected):
         @return JobItem    the job that was moved 
         """
         with self:
-          with self.queues.jobsInProgress:
-            with self.queues.jobsDone:
-                try:
-                    index = self.queues.jobsInProgress.index(job)
-                except ValueError, ex:
-                    raise BlackboardUpdateError("Job not found in jobsInProgress: " +
-                                                job.getProperty(Props.NAME, "(unidentified)"))
-                job = self.queues.jobsInProgress.pop(index)
-                job.markSuccessful(success)
-                self.queues.jobsDone.append(job)
+            with self.queues.jobsInProgress:
+                with self.queues.jobsDone:
+                    try:
+                        index = self.queues.jobsInProgress.index(job)
+                    except ValueError, ex:
+                        raise BlackboardUpdateError("Job not found in jobsInProgress: " +
+                                                    job.getProperty(Props.NAME, "(unidentified)"))
+                    job = self.queues.jobsInProgress.pop(index)
+                    job.markSuccessful(success)
+                    self.queues.jobsDone.append(job)

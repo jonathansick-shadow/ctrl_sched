@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
-# 
+#
 # LSST Data Management System
 # Copyright 2008, 2009, 2010 LSST Corporation.
-# 
+#
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
 #
@@ -11,14 +11,14 @@
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
-# You should have received a copy of the LSST License Statement and 
-# the GNU General Public License along with this program.  If not, 
+#
+# You should have received a copy of the LSST License Statement and
+# the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
@@ -38,19 +38,19 @@ import lsst.ctrl.sched.blackboard as bb
 
 testdir = os.path.join(os.environ["CTRL_SCHED_DIR"], "tests")
 
+
 class BlackboardTestCase(unittest.TestCase):
 
     def setUp(self):
-        self.bbdir = os.path.join(testdir,"testbb")
+        self.bbdir = os.path.join(testdir, "testbb")
         self.bb = bb.Blackboard(self.bbdir)
-        
-        self.daq = os.path.join(self.bbdir,"dataAvailable")
-        self.jsq = os.path.join(self.bbdir,"jobsPossible")
-        self.jaq = os.path.join(self.bbdir,"jobsAvailable")
-        self.jpq = os.path.join(self.bbdir,"jobsInProgress")
-        self.jdq = os.path.join(self.bbdir,"jobsDone")
-        self.prq = os.path.join(self.bbdir,"pipelinesReady")
 
+        self.daq = os.path.join(self.bbdir, "dataAvailable")
+        self.jsq = os.path.join(self.bbdir, "jobsPossible")
+        self.jaq = os.path.join(self.bbdir, "jobsAvailable")
+        self.jpq = os.path.join(self.bbdir, "jobsInProgress")
+        self.jdq = os.path.join(self.bbdir, "jobsDone")
+        self.prq = os.path.join(self.bbdir, "pipelinesReady")
 
     def tearDown(self):
         if os.path.exists(self.bbdir):
@@ -68,10 +68,10 @@ class BlackboardTestCase(unittest.TestCase):
     def testEmpty(self):
         self.assert_(os.path.exists(self.bbdir))
         for d in "dataAvailable jobsPossible jobsAvailable jobsInProgress jobsDone pipelinesReady".split():
-            path = os.path.join(self.bbdir,d)
+            path = os.path.join(self.bbdir, d)
             self.assert_(os.path.exists(path),
                          "queue directory not found: " + path)
-            path = os.path.join(self.bbdir,d,"_order.list")
+            path = os.path.join(self.bbdir, d, "_order.list")
             self.assert_(os.path.exists(path),
                          "queue order file not found: " + path)
 
@@ -90,7 +90,7 @@ class BlackboardTestCase(unittest.TestCase):
             self.fail("Unprotected queue access allowed")
         except AttributeError:
             pass
-        
+
     def testAddDataset(self):
         item = self._datasetItem("v1234-s0.fits", "raw")
         with self.bb:
@@ -100,12 +100,11 @@ class BlackboardTestCase(unittest.TestCase):
             self.assertEquals(self.bb.queues.dataAvailable.length(), 1)
             self.assertEquals(self.bb.queues.dataAvailable.get(0).getName(),
                               "v1234-s0.fits")
-        
 
         # confirm filesystem state
-        itemfile = os.path.join(self.bbdir,"dataAvailable","v1234-s0.fits.paf")
+        itemfile = os.path.join(self.bbdir, "dataAvailable", "v1234-s0.fits.paf")
         self.assert_(os.path.exists(itemfile))
-        
+
     def testAddJob(self):
         item = self._jobItem("v1234")
         with self.bb:
@@ -115,11 +114,11 @@ class BlackboardTestCase(unittest.TestCase):
             self.assertEquals(self.bb.queues.jobsPossible.length(), 1)
             self.assertEquals(self.bb.queues.jobsPossible.get(0).getName(),
                               "v1234")
-        
+
         # confirm filesystem state
-        itemfile = os.path.join(self.jsq,"v1234.paf")
+        itemfile = os.path.join(self.jsq, "v1234.paf")
         self.assert_(os.path.exists(itemfile))
-        
+
     def testMakeJobAvailable(self):
 
         # test first the transfer of a non-possible job
@@ -141,9 +140,9 @@ class BlackboardTestCase(unittest.TestCase):
                               "v1234")
 
         # confirm filesystem state
-        self.assert_(os.path.exists(os.path.join(self.jaq,"v1234.paf")))
-        self.assert_(not os.path.exists(os.path.join(self.jsq,"v1234.paf")))
-        
+        self.assert_(os.path.exists(os.path.join(self.jaq, "v1234.paf")))
+        self.assert_(not os.path.exists(os.path.join(self.jsq, "v1234.paf")))
+
     def testAllocateNextJob(self):
 
         # test transfering a job from an empty jobsAvailable queue
@@ -166,9 +165,9 @@ class BlackboardTestCase(unittest.TestCase):
                               "v1235")
 
         # confirm filesystem state
-        self.assert_(os.path.exists(os.path.join(self.jpq,"v1234.paf")))
-        self.assert_(os.path.exists(os.path.join(self.jaq,"v1235.paf")))
-        self.assert_(not os.path.exists(os.path.join(self.jaq,"v1234.paf")))
+        self.assert_(os.path.exists(os.path.join(self.jpq, "v1234.paf")))
+        self.assert_(os.path.exists(os.path.join(self.jaq, "v1235.paf")))
+        self.assert_(not os.path.exists(os.path.join(self.jaq, "v1234.paf")))
 
         # transfer 2nd job
         self.bb.allocateNextJob(1982349810931831L)
@@ -183,11 +182,11 @@ class BlackboardTestCase(unittest.TestCase):
                               "v1235")
 
         # confirm filesystem state
-        self.assert_(os.path.exists(os.path.join(self.jpq,"v1234.paf")))
-        self.assert_(os.path.exists(os.path.join(self.jpq,"v1235.paf")))
-        self.assert_(not os.path.exists(os.path.join(self.jaq,"v1234.paf")))
-        self.assert_(not os.path.exists(os.path.join(self.jaq,"v1235.paf")))
-        
+        self.assert_(os.path.exists(os.path.join(self.jpq, "v1234.paf")))
+        self.assert_(os.path.exists(os.path.join(self.jpq, "v1235.paf")))
+        self.assert_(not os.path.exists(os.path.join(self.jaq, "v1234.paf")))
+        self.assert_(not os.path.exists(os.path.join(self.jaq, "v1235.paf")))
+
     def testMakeJobDone(self):
 
         # test first the transfer of a non-possible job
@@ -209,12 +208,8 @@ class BlackboardTestCase(unittest.TestCase):
                               "v1234")
 
         # confirm filesystem state
-        self.assert_(os.path.exists(os.path.join(self.jdq,"v1234.paf")))
-        self.assert_(not os.path.exists(os.path.join(self.jpq,"v1234.paf")))
-        
-        
-
-
+        self.assert_(os.path.exists(os.path.join(self.jdq, "v1234.paf")))
+        self.assert_(not os.path.exists(os.path.join(self.jpq, "v1234.paf")))
 
 
 __all__ = "BlackboardTestCase".split()

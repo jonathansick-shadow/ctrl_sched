@@ -1,7 +1,7 @@
-# 
+#
 # LSST Data Management System
 # Copyright 2008, 2009, 2010 LSST Corporation.
-# 
+#
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
 #
@@ -9,14 +9,14 @@
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
-# You should have received a copy of the LSST License Statement and 
-# the GNU General Public License along with this program.  If not, 
+#
+# You should have received a copy of the LSST License Statement and
+# the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
@@ -40,7 +40,7 @@ class JobOfficeClient(object):
     @see GetAJobStage, DataReadyStage, JobDoneStage
     """
 
-    def __init__(self, runId, pipelineName, brokerHost, 
+    def __init__(self, runId, pipelineName, brokerHost,
                  originatorId=None, brokerPort=None):
         """
         @param runId         the Run ID for the pipeline
@@ -60,6 +60,7 @@ class JobOfficeClient(object):
 
     def getOriginatorId(self):
         return self.origid
+
 
 class GetAJobClient(JobOfficeClient):
     """
@@ -81,7 +82,7 @@ class GetAJobClient(JobOfficeClient):
         @param logger        the logger to use
         @param brokerPort    the port where the event broker is listening
         """
-        JobOfficeClient.__init__(self, runId, pipelineName, brokerHost, 
+        JobOfficeClient.__init__(self, runId, pipelineName, brokerHost,
                                  brokerPort=brokerPort)
 
         self.sender = utils.EventSender(self.runId, topic, brokerHost,
@@ -118,22 +119,22 @@ class GetAJobClient(JobOfficeClient):
                             (event.getStatus(), event.getRunId()))
             self.logger.log(Log.INFO-3, "event properties: " + str(ps.names()))
         inputs = utils.unserializeDatasetList(
-                                       ps.getArrayString("inputs"))
+            ps.getArrayString("inputs"))
         outputs = utils.unserializeDatasetList(
-                                       ps.getArrayString("outputs"))
+            ps.getArrayString("outputs"))
         jobds = utils.unserializeDataset(ps.getString("identity"))
         jobid = jobds.ids is not None and jobds.ids.copy() or {}
         if jobds.type:
             jobid["type"] = jobds.type
 
         return (jobid, inputs, outputs)
-                                       
 
     def tellReady(self):
         """
         tell the JobOffice that the pipeline is ready for an assignment.
         """
         self.sender.send(self.sender.createPipelineReadyEvent(self.name))
+
 
 class DataReadyClient(JobOfficeClient):
     """
@@ -143,7 +144,7 @@ class DataReadyClient(JobOfficeClient):
     @see DataReadyStage
     """
 
-    def __init__(self, runId, pipelineName, topic, brokerHost, 
+    def __init__(self, runId, pipelineName, topic, brokerHost,
                  datasetType=None, reportAllPossible=True, brokerPort=None):
         """
         create the client
@@ -163,10 +164,9 @@ class DataReadyClient(JobOfficeClient):
 
         self.datasetType = datasetType
         self.reportAllPossible = reportAllPossible
-        
+
         self.dataSender = utils.EventSender(self.runId, topic, brokerHost,
                                             self.getOriginatorId(), brokerPort)
-
 
     def tellDataReady(self, possible, completed=None, defSuccess=False):
         """
@@ -194,7 +194,7 @@ class DataReadyClient(JobOfficeClient):
                 # only notify on the dataset type of interest
                 remain.append(ds)
                 continue
-            
+
             ds.valid = ds in completed
             if self.reportAllPossible and not ds.valid:
                 fullsuccess = False
@@ -202,7 +202,7 @@ class DataReadyClient(JobOfficeClient):
                 report.append(ds)
             else:
                 remain.append(ds)
-        
+
         self.dataSender.send(
             self.dataSender.createDatasetEvent(self.name, report, fullsuccess))
         return remain
@@ -216,7 +216,7 @@ class JobDoneClient(JobOfficeClient):
     @see JobDoneStage
     """
 
-    def __init__(self, runId, pipelineName, topic, brokerHost,brokerPort=None):
+    def __init__(self, runId, pipelineName, topic, brokerHost, brokerPort=None):
         """
         create the client
         @param runId         the Run ID for the pipeline
@@ -224,9 +224,9 @@ class JobDoneClient(JobOfficeClient):
         @param topic         the topic to be used to communicate with
                                  the JobOffice
         """
-        JobOfficeClient.__init__(self, runId, pipelineName, 
+        JobOfficeClient.__init__(self, runId, pipelineName,
                                  brokerHost, brokerPort=brokerPort)
-                                 
+
         self.jobSender = utils.EventSender(self.runId, topic, brokerHost,
                                            self.getOriginatorId(), brokerPort)
 
@@ -238,13 +238,14 @@ class JobDoneClient(JobOfficeClient):
                                                               success,
                                                               originatorId))
 
+
 class _GetAJobComp(object):
 
     def setup(self):
-        deffile = DefaultPolicyFile("ctrl_sched","GetAJob_dict.paf","policies")
+        deffile = DefaultPolicyFile("ctrl_sched", "GetAJob_dict.paf", "policies")
         defpol = Policy.createPolicy(deffile, deffile.getRepositoryPath())
 
-        if not hasattr(self,"policy") or not self.policy:
+        if not hasattr(self, "policy") or not self.policy:
             self.policy = Policy()
         self.policy.mergeDefaults(defpol.getDictionary())
 
@@ -258,13 +259,13 @@ class _GetAJobComp(object):
 
         self.clipboardKeys = {}
         self.clipboardKeys["jobIdentity"] = \
-           self.policy.getString("outputKeys.jobIdentity")
+            self.policy.getString("outputKeys.jobIdentity")
         self.clipboardKeys["inputDatasets"] = \
-           self.policy.getString("outputKeys.inputDatasets")
+            self.policy.getString("outputKeys.inputDatasets")
         self.clipboardKeys["outputDatasets"] = \
-           self.policy.getString("outputKeys.outputDatasets")
+            self.policy.getString("outputKeys.outputDatasets")
         self.clipboardKeys["completedDatasets"] = \
-           self.policy.getString("outputKeys.completedDatasets")
+            self.policy.getString("outputKeys.completedDatasets")
         self.log.log(Log.INFO-1, "clipboard keys: " + str(self.clipboardKeys))
 
         topic = self.policy.getString("pipelineEvent")
@@ -284,17 +285,17 @@ class _GetAJobComp(object):
         self.log.log(Log.INFO-2, "Received assignment for pipeline #" +
                      str(clipboard.get("originatorId")))
 
-        # ids is a dictionary 
+        # ids is a dictionary
         allZero = 1
         for inputKey, inputValue in inputs[0].ids.iteritems():
             # self.log.log(Log.INFO, "key  " + str(inputKey) + " value-" + str(inputValue) + "----")
             if str(inputValue) != "0":
-                allZero = 0 
+                allZero = 0
 
         if allZero == 1:
             self.log.log(Log.INFO, "All of the attributes are zero, denoting noMoreDatasets ")
             clipboard.put("noMoreDatasets", allZero)
-        
+
         clipboard.put(self.clipboardKeys["inputDatasets"], inputs)
         clipboard.put(self.clipboardKeys["outputDatasets"], outputs)
         clipboard.put(self.clipboardKeys["completedDatasets"], [])
@@ -360,7 +361,6 @@ class _GetAJobComp(object):
                 log.setPreamblePropertyBool(name, jobid[key])
             else:
                 log.setPreamblePropertyString(name, jobid[key])
-                    
 
 
 class GetAJobParallelProcessing(_GetAJobComp, harnessStage.ParallelProcessing):
@@ -368,6 +368,7 @@ class GetAJobParallelProcessing(_GetAJobComp, harnessStage.ParallelProcessing):
     Stage implementation that gets a job assignment for processing by
     the parallel Slice.
     """
+
     def process(self, clipboard):
         """
         get the job assignment and post it to the clipboard.
@@ -375,11 +376,13 @@ class GetAJobParallelProcessing(_GetAJobComp, harnessStage.ParallelProcessing):
         self.tagLogger(None)
         self.setAssignment(clipboard)
 
+
 class GetAJobSerialProcessing(_GetAJobComp, harnessStage.SerialProcessing):
     """
     Stage implementation that gets a job assignment for processing by
     the master Pipeline thread.
     """
+
     def preprocess(self, clipboard):
         """
         get the job assignment and post it to the clipboard.
@@ -387,13 +390,14 @@ class GetAJobSerialProcessing(_GetAJobComp, harnessStage.SerialProcessing):
         self.tagLogger(None)
         self.setAssignment(clipboard)
 
+
 class _DataReadyComp(object):
 
     def setup(self, policyDict="DataReady_dict.paf"):
         deffile = DefaultPolicyFile("ctrl_sched", policyDict, "policies")
         defpol = Policy.createPolicy(deffile, deffile.getRepositoryPath())
 
-        if not hasattr(self,"policy") or not self.policy:
+        if not hasattr(self, "policy") or not self.policy:
             self.policy = Policy()
         self.policy.mergeDefaults(defpol.getDictionary())
 
@@ -404,9 +408,9 @@ class _DataReadyComp(object):
 
         self.clipboardKeys = {}
         self.clipboardKeys["completedDatasets"] = \
-           self.policy.getString("inputKeys.completedDatasets")
+            self.policy.getString("inputKeys.completedDatasets")
         self.clipboardKeys["possibleDatasets"] = \
-           self.policy.getString("inputKeys.possibleDatasets")
+            self.policy.getString("inputKeys.possibleDatasets")
 
         self.dataclients = []
         clpols = []
@@ -422,7 +426,6 @@ class _DataReadyComp(object):
                                      self.getEventBrokerHost(), dstype,
                                      reportAll)
             self.dataclients.append(client)
-        
 
     def tellDataReady(self, clipboard):
         """
@@ -443,13 +446,14 @@ class _DataReadyComp(object):
         # update the possible list for the ones we have not reported
         # on yet.
         clipboard.put(self.clipboardKeys["possibleDatasets"], possible)
-       
+
 
 class DataReadyParallelProcessing(_DataReadyComp, harnessStage.ParallelProcessing):
     """
     Stage implementation that reports on newly available datasets via the
     Slice threads.
     """
+
     def process(self, clipboard):
         """
         examine the clipboard for the list of persisted datasets and
@@ -457,17 +461,20 @@ class DataReadyParallelProcessing(_DataReadyComp, harnessStage.ParallelProcessin
         """
         self.tellDataReady(clipboard)
 
+
 class DataReadySerialProcessing(_DataReadyComp, harnessStage.SerialProcessing):
     """
     Stage implementation that reports on newly available datasets via the
     master Pipeline thread.
     """
+
     def preprocess(self, clipboard):
         """
         examine the clipboard for the list of persisted datasets and
         announce their availability to JobOffices via an event.
         """
         self.tellDataReady(clipboard)
+
 
 class _JobDoneComp(_DataReadyComp):
 
@@ -479,7 +486,6 @@ class _JobDoneComp(_DataReadyComp):
         topic = self.policy.getString("pipelineEvent")
         self.jobclient = JobDoneClient(self.getRun(), self.getName(), topic,
                                        self.getEventBrokerHost())
-
 
     def tellJobDone(self, clipboard=None):
         """
@@ -498,11 +504,13 @@ class _JobDoneComp(_DataReadyComp):
                 self.tellDataReady(clipboard)
         self.jobclient.tellDone(self.jobsuccess, origid)
 
+
 class JobDoneParallelProcessing(_JobDoneComp, harnessStage.ParallelProcessing):
     """
     Stage implementation that reports on newly available datasets via the
     Slice threads.
     """
+
     def process(self, clipboard):
         """
         examine the clipboard for the list of persisted datasets and
@@ -510,17 +518,20 @@ class JobDoneParallelProcessing(_JobDoneComp, harnessStage.ParallelProcessing):
         """
         self.tellJobDone(clipboard)
 
+
 class JobDoneSerialProcessing(_JobDoneComp, harnessStage.SerialProcessing):
     """
     Stage implementation that reports on newly available datasets via the
     master Pipeline thread.
     """
+
     def preprocess(self, clipboard):
         """
         examine the clipboard for the list of persisted datasets and
         announce their availability to JobOffices via an event.
         """
         self.tellJobDone(clipboard)
+
 
 class GetAJobFromMasterStage(harnessStage.Stage):
     """
@@ -529,6 +540,7 @@ class GetAJobFromMasterStage(harnessStage.Stage):
     """
     serialClass = GetAJobSerialProcessing
 
+
 class GetAJobFromSliceStage(harnessStage.Stage):
     """
     Stage implementation that gets a job assignment for processing by
@@ -536,11 +548,13 @@ class GetAJobFromSliceStage(harnessStage.Stage):
     """
     parallelClass = GetAJobParallelProcessing
 
+
 class JobDoneFromMasterStage(harnessStage.Stage):
     """
     Stage implementation that reports on newly available datasets.
     """
     serialClass = JobDoneSerialProcessing
+
 
 class JobDoneFromSliceStage(harnessStage.Stage):
     """
@@ -548,12 +562,14 @@ class JobDoneFromSliceStage(harnessStage.Stage):
     """
     parallelClass = JobDoneParallelProcessing
 
+
 class DataReadyFromMasterStage(harnessStage.Stage):
     """
     Stage implementation that reports on newly available datasets via the
     master Pipeline thread.
     """
     serialClass = DataReadySerialProcessing
+
 
 class DataReadyFromSliceStage(harnessStage.Stage):
     """

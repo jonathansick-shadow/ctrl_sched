@@ -1,7 +1,7 @@
-# 
+#
 # LSST Data Management System
 # Copyright 2008, 2009, 2010 LSST Corporation.
-# 
+#
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
 #
@@ -9,14 +9,14 @@
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
-# You should have received a copy of the LSST License Statement and 
-# the GNU General Public License along with this program.  If not, 
+#
+# You should have received a copy of the LSST License Statement and
+# the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
@@ -25,7 +25,8 @@ The basic blackboard API.  This file includes some abstract classes, including
 BlackboardItem and BlackboardItemQueue.
 """
 from __future__ import with_statement
-import os, re
+import os
+import re
 
 from lsst.ctrl.sched.base import _AbstractBase
 from exceptions import *
@@ -34,6 +35,7 @@ from item import *
 from lsst.pex.logging import Log
 from lsst.pex.policy import Policy, PAFWriter
 from lsst.utils.multithreading import SharedData, LockProtected
+
 
 class BlackboardItemQueue(_AbstractBase):
     """
@@ -92,7 +94,7 @@ class BlackboardItemQueue(_AbstractBase):
         @param item    the BlackboardItem to add
         """
         self._notImplemented("append")
-        
+
     def insertAt(self, item, index=0):
         """
         insert a BlackboardItem at a given position in the queue.  If that
@@ -144,7 +146,7 @@ class BlackboardItemQueue(_AbstractBase):
         return an iterator to the items in this queue.  
         """
         self._notImplemented("iterate")
-        
+
 
 class PersistingBlackboardItemQueue(BlackboardItemQueue, LockProtected):
     """
@@ -262,6 +264,7 @@ class PersistingBlackboardItemQueue(BlackboardItemQueue, LockProtected):
         self._checkLocked()
         return list(self._items)
 
+
 class _FSDBBlackboardQueue(BlackboardItemQueue):
     """
     a blackboard queue implementation that stores all its items as files on
@@ -299,8 +302,8 @@ class _FSDBBlackboardQueue(BlackboardItemQueue):
                                         % self._dbdir)
 
         if not os.path.isdir(self._dbdir) or not os.path.exists(self._dbdir):
-          raise BlackboardAccessError("Persistence directory does not exist: "+
-                                      self._dbdir)
+            raise BlackboardAccessError("Persistence directory does not exist: " +
+                                        self._dbdir)
 
         # the file that keeps the order
         self._orderfile = os.path.join(self._dbdir, self.orderFilename)
@@ -325,7 +328,7 @@ class _FSDBBlackboardQueue(BlackboardItemQueue):
             out = self._list()
             out.sort()
             return out
-        
+
         try:
             with open(self._orderfile) as ordfile:
 
@@ -335,9 +338,9 @@ class _FSDBBlackboardQueue(BlackboardItemQueue):
         except IOError, ex:
             raise BlackboardAccessError("IOError getting item order: " +
                                         str(ex), ex)
-        
+
         return out
-        
+
     def _list(self):
         # return the unordered list of files representing queue items.
         # Acquire self._sd before calling.
@@ -347,7 +350,7 @@ class _FSDBBlackboardQueue(BlackboardItemQueue):
                           os.listdir(self._dbdir))
         except IOError, ex:
             raise BlackboardAccessError("IOError opening queue: " +
-                                            str(ex), ex)
+                                        str(ex), ex)
 
     def _syncOrder(self):
         # make sure current order list is in sync with the item files actually
@@ -363,7 +366,7 @@ class _FSDBBlackboardQueue(BlackboardItemQueue):
         if len(missing) > 0:
             if self._log and self._log.sends(Log.WARN):
                 self._log(Log.WARN,
-                          "Queue order file missing items; adding: "+
+                          "Queue order file missing items; adding: " +
                           " ".join(missing))
             add = list(missing)
             add.sort()
@@ -392,9 +395,9 @@ class _FSDBBlackboardQueue(BlackboardItemQueue):
 
                 for item in self._sd.files:
                     print >> ordfile, item
-                    
+
         except IOError, ex:
-            raise BlackboardPersistError("IOError getting item order: "+
+            raise BlackboardPersistError("IOError getting item order: " +
                                          str(ex), ex)
 
     def filenameFor(self, item):
@@ -411,7 +414,7 @@ class _FSDBBlackboardQueue(BlackboardItemQueue):
             i += 1
             out = "%s.%i.%s" % (name, i, ext)
         return out
-        
+
     def pendingAddFor(self, file):
         """
         return the temporary file name that should used for a file as it's
@@ -457,7 +460,7 @@ class _FSDBBlackboardQueue(BlackboardItemQueue):
         guard.
         """
         raise RuntimeError("Programmer Error: should not call index() on filesytem-based implementation")
-    
+
     def get(self, index=0):
         """
         return the n-th item in the queue (without removing it)
@@ -481,7 +484,7 @@ class _FSDBBlackboardQueue(BlackboardItemQueue):
             # prepend the dbdir
             (file, deleted) = map(lambda f: os.path.join(self._dbdir, f),
                                   [file, deleted])
-            
+
             if os.path.exists(os.path.join(self._dbdir, deleted)):
                 raise BlackboardPersistError("concurrancy collision during " +
                                              "update:" + deleted)
@@ -512,7 +515,7 @@ class _FSDBBlackboardQueue(BlackboardItemQueue):
         This implimentation attempts to be atomic: if any failure occurs,
         the item is not appended and the integrity of this object's state
         is preserved.
-        
+
         @param item    the BlackboardItem to add
         """
         with self._sd:
@@ -520,11 +523,11 @@ class _FSDBBlackboardQueue(BlackboardItemQueue):
             pending = os.path.join(self._dbdir, self.pendingAddFor(file))
             self._writeItem(item, pending)
 
-            try: 
+            try:
                 self._insertItemFileAt(pending, file, -1)
             except BlackboardAccessError, ex:
                 # roll back changes
-                try: 
+                try:
                     if os.path.exists(pending):
                         os.remove(pending)
                 except Exception, rbex:
@@ -545,14 +548,14 @@ class _FSDBBlackboardQueue(BlackboardItemQueue):
             raise BlackboardPersistError("IOError: " + str(ex), ex)
 
         return file
-        
+
     def _insertItemFileAt(self, src, dest, index):
         # take an item already written to a file and insert it into this
         # queue.  This is done by moving it from src to dest and inserting
         # its name into the order list at the given position.  src should
         # be the full path, but dest should not be.  If index is out of
         # range, the item will be appended
-        
+
         try:
             if index < 0 or index > len(self._sd.files):
                 index = -1
@@ -592,7 +595,7 @@ class _FSDBBlackboardQueue(BlackboardItemQueue):
                 if os.path.exists(pending):
                     os.remove(pending)
                 raise
-                
+
     def insert(self, item, priority=0):
         """
         insert an item relative to the other items in the queue according
@@ -600,7 +603,7 @@ class _FSDBBlackboardQueue(BlackboardItemQueue):
         algorithm for determining the best position.
 
         This implementation simply appends the item
-        
+
         @param item      the Blackboard item to add.
         @param priority  a measure of the priority for this item where
                            higher numbers mean a higher priority.  This
@@ -631,7 +634,7 @@ class _FSDBBlackboardQueue(BlackboardItemQueue):
         with self._sd:
             if self.isEmpty():
                 raise EmptyQueueError()
-        
+
             nextfile = self._sd.files[0]
             item = self.pop(0)
             try:
@@ -674,7 +677,7 @@ class _FSDBBlackboardQueue(BlackboardItemQueue):
         def __del__(self):
             if self.purge and os.path.exists(self.filename):
                 os.remove(self.filename)
-    
+
     def iterate(self):
         """
         return an iterator to the items in this queue.  
@@ -682,16 +685,19 @@ class _FSDBBlackboardQueue(BlackboardItemQueue):
         for i in xrange(self.length()):
             yield self.get(i)
 
+
 class _PolicyBlackboardQueue(_FSDBBlackboardQueue):
     """
     an filesystem-based queue that stores items as Policy files
     """
+
     def __init__(self, dbdir, logger=None):
         """
         create an empty queue using the given queue directory
         """
         fmtr = PolicyBlackboardItem.createFormatter()
         _FSDBBlackboardQueue.__init__(self, dbdir, fmtr, logger)
+
 
 class InMemoryBlackboardQueue(BlackboardItemQueue):
     """
@@ -792,7 +798,7 @@ class InMemoryBlackboardQueue(BlackboardItemQueue):
         """
         return list(self._items)
 
-        
+
 class TransactionalBlackboardQueue(BlackboardItemQueue, LockProtected):
     """
     a queue that supports grouping of actions into transactions that must
@@ -837,11 +843,11 @@ class TransactionalBlackboardQueue(BlackboardItemQueue, LockProtected):
         LockProtected.__enter__(self)
 
         if self._rbq is None:
-             # create a copy of the pre-transations state
-             self._rbq = InMemoryBlackboardQueue()
-             for item in self._memq.iterate():
-                 self._rbq.append(item)
-                
+            # create a copy of the pre-transations state
+            self._rbq = InMemoryBlackboardQueue()
+            for item in self._memq.iterate():
+                self._rbq.append(item)
+
         if self._pending is None:
             self._pending = []
 
@@ -872,12 +878,13 @@ class TransactionalBlackboardQueue(BlackboardItemQueue, LockProtected):
             out = LockProtected.__exit__(self, exc_type, exc_value, traceback)
 
         return out
-                                          
-        
+
     class _Action(object):
+
         def __init__(self, func, kw):
             self._f = func
             self._kw = kw
+
         def execute(self, queue):
             f = getattr(queue, self._f)
             return f(**self._kw)
@@ -899,7 +906,7 @@ class TransactionalBlackboardQueue(BlackboardItemQueue, LockProtected):
         except Exception, ex:
             if exc and self._log:
                 self._log.log(Log.FAIL, "roll back failure hiding original error: %s" % exc)
-            raise BlackboardRollbackError(exc, ex, 
+            raise BlackboardRollbackError(exc, ex,
                                           "Rollback error leaving corrupt queue: " +
                                           str(ex))
 
@@ -907,7 +914,7 @@ class TransactionalBlackboardQueue(BlackboardItemQueue, LockProtected):
         toq.removeAll()
         for item in fromq.iterate():
             toq.append(item)
-        
+
     def length(self):
         """
         return the number of items in this queue
@@ -971,7 +978,7 @@ class TransactionalBlackboardQueue(BlackboardItemQueue, LockProtected):
                 self._pending.append(self._Action("append", {"item": item}))
 
             self._memq.append(item)
-        
+
     def insertAt(self, item, index=0):
         """
         insert a BlackboardItem at a given position in the queue.  If that
@@ -994,9 +1001,8 @@ class TransactionalBlackboardQueue(BlackboardItemQueue, LockProtected):
                 self._pending.append(self._Action("insertAt",
                                                   {"item": item,
                                                    "index": index}))
-                                                
-            self._memq.insertAt(item, index)
 
+            self._memq.insertAt(item, index)
 
     def insert(self, item, priority=0):
         """
@@ -1029,7 +1035,6 @@ class TransactionalBlackboardQueue(BlackboardItemQueue, LockProtected):
                 self._pending.append(self._Action("removeAll", {}))
 
             self._memq.removeAll()
-        
 
     def transferNextTo(self, queue, priority=0):
         """
@@ -1055,6 +1060,7 @@ class TransactionalBlackboardQueue(BlackboardItemQueue, LockProtected):
         return an iterator to the items in this queue.  
         """
         return self._memq.iterate()
+
 
 class BasicBlackboardQueue(TransactionalBlackboardQueue):
     """
@@ -1113,6 +1119,7 @@ class BasicBlackboardQueue(TransactionalBlackboardQueue):
         @param props   a dictionary of properties
         """
         return JobItem(name, files, props)
+
 
 class _DeprecatedBasicBlackboardQueue(PersistingBlackboardItemQueue):
     """
@@ -1175,6 +1182,7 @@ class _DeprecatedBasicBlackboardQueue(PersistingBlackboardItemQueue):
         """
         return JobItem(name, files, props)
 
+
 class DataQueue(BasicBlackboardQueue):
     """
     a Blackboard item queue that holds DataProduct items
@@ -1186,6 +1194,7 @@ class DataQueue(BasicBlackboardQueue):
         """
         return DataProductItem(item)
 
+
 class JobQueue(BasicBlackboardQueue):
     """
     a Blackboard item queue that holds DataProduct items
@@ -1196,8 +1205,6 @@ class JobQueue(BasicBlackboardQueue):
         wrap a persistable item for use in this queue.
         """
         return JobItem(item)
-
-
 
 
 __all__ = "BlackboardItemQueue BasicBlackboardQueue DataQueue JobQueue".split()

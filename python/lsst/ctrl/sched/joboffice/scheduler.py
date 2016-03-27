@@ -1,7 +1,7 @@
-# 
+#
 # LSST Data Management System
 # Copyright 2008, 2009, 2010 LSST Corporation.
-# 
+#
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
 #
@@ -9,14 +9,14 @@
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
-# You should have received a copy of the LSST License Statement and 
-# the GNU General Public License along with this program.  If not, 
+#
+# You should have received a copy of the LSST License Statement and
+# the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
@@ -33,10 +33,12 @@ from triggerHandlers import FilesetTriggerHandler
 from lsst.pex.policy import Policy, DefaultPolicyFile
 from lsst.pex.logging import Log
 
-import os, time
+import os
+import time
 
 # NOTE:  the two schedule implementations do not use the Trigger API in
 # a consistent way; the Trigger API needs to be reworked.
+
 
 class Scheduler(_AbstractBase):
     """
@@ -90,7 +92,8 @@ class Scheduler(_AbstractBase):
 
     def _tell(self, lev, msg, args=None):
         if self.log:
-            if args:  msg = msg % args
+            if args:
+                msg = msg % args
             self.log.log(lev, msg)
 
     def makeJobsAvailable(self):
@@ -130,10 +133,11 @@ class Scheduler(_AbstractBase):
         else:
             cls = utils.importClass(clsname)
             if not issubclass(cls, Scheduler):
-               raise TypeError("Policy schedule.className is not a Scheduler: "
-                               + clsname)
+                raise TypeError("Policy schedule.className is not a Scheduler: "
+                                + clsname)
 
         return cls(blackboard, policy, logger)
+
 
 class DataTriggeredScheduler(Scheduler):
     """
@@ -182,11 +186,10 @@ class DataTriggeredScheduler(Scheduler):
         if pol.exists("template"):
             self.nametmpl = pol.getString("template")
         self.nameNumber = pol.getInt("initCounter")
-        
+
         self.jobRetries = None
         if policy.exists("job.retries"):
             self.jobRetries = policy.getInt("job.retries")
-
 
     def processDataset(self, dataset, success=None):
         """
@@ -242,12 +245,12 @@ class DataTriggeredScheduler(Scheduler):
                     outputs.extend(filt.listDatasets(recognized))
 
                 trighdlr = \
-                      FilesetTriggerHandler(trigger.listDatasets(recognized))
+                    FilesetTriggerHandler(trigger.listDatasets(recognized))
 
                 jobds = self._determineJobIdentity(outputs, inputs)
                 name = self.createName(jobds)
-                
-                job = JobItem.createItem(jobds, name, inputs,outputs, trighdlr, retries=self.jobRetries)
+
+                job = JobItem.createItem(jobds, name, inputs, outputs, trighdlr, retries=self.jobRetries)
                 job.setNeededDataset(recognized)
                 self.bb.queues.jobsPossible.append(job)
 
@@ -255,9 +258,10 @@ class DataTriggeredScheduler(Scheduler):
         # return an identifier for the job implied by the outputs and inputs.
         # this identifier is returned in the form of a Dataset type (even
         # though, semantically, it represents a job.
-        
-        if inputs is None:  inputs = []
-        
+
+        if inputs is None:
+            inputs = []
+
         if self.jobIdConf:
             # determine our template dataset for our identity
             template = None
@@ -267,8 +271,10 @@ class DataTriggeredScheduler(Scheduler):
                 type = self.jobIdConf.getString("templateType")
                 selecttype = lambda d: d.type == type
                 template = filter(selecttype, outputs)
-                if len(template) == 0: template = filter(selecttype, inputs)
-                if len(template) > 0: template = template[0]
+                if len(template) == 0:
+                    template = filter(selecttype, inputs)
+                if len(template) > 0:
+                    template = template[0]
             if not template:
                 # default to the first output (then input) dataset
                 template = len(outputs) > 0 and outputs[0] or inputs[0]
@@ -304,7 +310,7 @@ class DataTriggeredScheduler(Scheduler):
             except KeyError:
                 self._debug("Trouble creating name via %s % %s",
                             (self.nametmpl, ids))
-                
+
         if not out:
             out = "%s-%s" % (self.defaultName, self.nameNumber)
             self.nameNumber += 1
@@ -397,16 +403,16 @@ class ButlerTriggeredScheduler(Scheduler):
                 found = False
                 for i in xrange(self.bb.queues.jobsPossible.length()):
                     candidate = self.bb.queues.jobsPossible.get(i)
-        
+
                     if jobid == candidate.getJobIdentity():
                         found = True
                         if not candidate.setNeededDataset(dataset):
-                            self._warn("Dataset %s not needed for matched "+
+                            self._warn("Dataset %s not needed for matched " +
                                        "Job %s", (dataset, jobid))
                         else:
                             self._debug("Dataset %s needed for Job %s",
                                         (dataset, jobid))
-                        
+
                 if not found:
                     # nominate this job by adding it to jobsPossible
                     inputs = []
@@ -417,17 +423,17 @@ class ButlerTriggeredScheduler(Scheduler):
                         if hasattr(filt, "prereq") and filt.prereq:
                             prereqs.extend(dss)
                     trighdlr = FilesetTriggerHandler(prereqs)
-                    
+
                     outputs = []
                     for filt in self.outputdata:
                         outputs.extend(filt.listDatasets(jobid))
 
                     name = self.createName(jobid)
-                    candidate = JobItem.createItem(jobid, name, inputs,outputs,
+                    candidate = JobItem.createItem(jobid, name, inputs, outputs,
                                                    trighdlr)
                     candidate.setNeededDataset(dataset)
                     self.bb.queues.jobsPossible.append(candidate)
-                    
+
     def createName(self, jobid):
         """
         create a job name based on a job id
@@ -441,7 +447,7 @@ class ButlerTriggeredScheduler(Scheduler):
             except KeyError:
                 self._debug("Trouble creating name via %s % %s",
                             (self.nametmpl, ids))
-                
+
         if not out:
             out = "%s-%s" % (self.defaultName, self.nameNumber)
             self.nameNumber += 1

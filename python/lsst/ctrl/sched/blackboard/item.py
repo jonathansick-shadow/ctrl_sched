@@ -1,7 +1,7 @@
-# 
+#
 # LSST Data Management System
 # Copyright 2008, 2009, 2010 LSST Corporation.
-# 
+#
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
 #
@@ -9,14 +9,14 @@
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
-# You should have received a copy of the LSST License Statement and 
-# the GNU General Public License along with this program.  If not, 
+#
+# You should have received a copy of the LSST License Statement and
+# the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
@@ -29,6 +29,7 @@ from lsst.ctrl.sched import Dataset
 
 from lsst.pex.policy import Policy, PAFWriter
 import pdb
+
 
 class BlackboardItem(_AbstractBase):
     """
@@ -72,6 +73,7 @@ class BlackboardItem(_AbstractBase):
     def has_key(self, name):
         return self.hasProperty(name)
 
+
 class DictBlackboardItem(BlackboardItem):
     """
     An implementation of a BlackboardItem that stores properities via a
@@ -114,6 +116,7 @@ class DictBlackboardItem(BlackboardItem):
         return the property names that make up this item
         """
         return self._props.keys()
+
 
 class PolicyBlackboardItem(BlackboardItem):
     """
@@ -181,6 +184,7 @@ class PolicyBlackboardItem(BlackboardItem):
         return PolicyBlackboardItem._Fmtr()
 
     class _Fmtr(object):
+
         def write(self, filename, item):
             pol = None
             if isinstance(item, PolicyBlackboardItem):
@@ -206,6 +210,7 @@ class PolicyBlackboardItem(BlackboardItem):
             return the recommended extension for the format this writes out
             """
             return "paf"
+
 
 class ImplBlackboardItem(BlackboardItem):
     """
@@ -250,6 +255,7 @@ class ImplBlackboardItem(BlackboardItem):
     def __getitem__(self, name):
         return self._impl[name]
 
+
 class BasicBlackboardItem(ImplBlackboardItem):
     """
     A simple, generic BlackboardItem.
@@ -287,7 +293,7 @@ class BasicBlackboardItem(ImplBlackboardItem):
         self.getProperty("NAME")
         """
         return self.getProperty(self.NAME)
-        
+
     @staticmethod
     def createItem(name, props=None):
         """
@@ -301,6 +307,7 @@ class BasicBlackboardItem(ImplBlackboardItem):
                 impl._setProperty(key, props[key])
         out = BasicBlackboardItem(impl, name)
         return out
+
 
 class DataProductItem(BasicBlackboardItem):
     """
@@ -316,11 +323,10 @@ class DataProductItem(BasicBlackboardItem):
     DATASET    a policy-serialization of a Dataset description
     @end verbatim
     """
-    SUCCESS  = "SUCCESS"
-    DATASET  = "DATASET"
-    
+    SUCCESS = "SUCCESS"
+    DATASET = "DATASET"
+
     def __init__(self, impl, name=None, success=None, dataset=None):
-                 
         """
         create an item.  This is not usually called directly by the user but
         rather via createItem().  If the standard property parameters
@@ -368,13 +374,13 @@ class DataProductItem(BasicBlackboardItem):
         if ds:
             return ds.type
         return None
-        
+
     def isSuccessful(self):
         """
         return the dataset type.  Equivalent to self.getProperty("SUCCESS")
         """
         return self.getProperty(self.SUCCESS)
-        
+
     @staticmethod
     def createItem(dataset, success=True, props=None):
         """
@@ -391,6 +397,7 @@ class DataProductItem(BasicBlackboardItem):
         name = dataset.toString()
         out = DataProductItem(impl, name, success, dataset)
         return out
+
 
 class PipelineItem(BasicBlackboardItem):
     """
@@ -449,6 +456,7 @@ class PipelineItem(BasicBlackboardItem):
         out = PipelineItem(impl, name, runId, pipelineId)
         return out
 
+
 def _encodeId(id):
     prts = []
     prts.append(int((id >> 48) & 0xffff))
@@ -456,11 +464,12 @@ def _encodeId(id):
     prts.append(int((id >> 16) & 0xffff))
     prts.append(int(id & 0xffff))
     return prts
-def _decodeId(quad):
-    return long(((1L *quad[0]) << 48) | ((1L *quad[1]) << 32) |
-                ((1L *quad[2]) << 16) | quad[3])
 
-    
+
+def _decodeId(quad):
+    return long(((1L * quad[0]) << 48) | ((1L * quad[1]) << 32) |
+                ((1L * quad[2]) << 16) | quad[3])
+
 
 class JobItem(BasicBlackboardItem):
     """
@@ -486,7 +495,7 @@ class JobItem(BasicBlackboardItem):
     SUCCESS = "SUCCESS"
     RETRIES = "RETRIES"
 
-    def __init__(self, impl, jobDataset=None, name=None, inputs=None, 
+    def __init__(self, impl, jobDataset=None, name=None, inputs=None,
                  outputs=None, triggerHandler=None, retries=None):
         """
         create an item.  This is not usually called directly by the user but
@@ -501,11 +510,13 @@ class JobItem(BasicBlackboardItem):
         @param retries  the number times this object can be retried.
         """
         BasicBlackboardItem.__init__(self, impl, name)
-        if inputs:  self._setDatasets(impl, self.INPUT, inputs)
-        if outputs:  self._setDatasets(impl, self.OUTPUT, outputs)
+        if inputs:
+            self._setDatasets(impl, self.INPUT, inputs)
+        if outputs:
+            self._setDatasets(impl, self.OUTPUT, outputs)
         if jobDataset:
             impl._setProperty(self.JOBIDENTITY, jobDataset.toPolicy())
-        if retries is not None: 
+        if retries is not None:
             impl._setProperty(self.RETRIES, retries)
         else:
             impl._setProperty(self.RETRIES, 0)
@@ -579,6 +590,7 @@ class JobItem(BasicBlackboardItem):
         ready to be scheduled to a pipeline.
         """
         return self.triggerHandler is not None and self.triggerHandler.isReady()
+
     def setPipelineId(self, id):
         self._setProperty(self.PIPELINEID, _encodeId(id))
 
@@ -592,7 +604,7 @@ class JobItem(BasicBlackboardItem):
         self._setProperty(self.SUCCESS, success)
 
     @staticmethod
-    def createItem(jobDataset, name, inputs=None, outputs=[], 
+    def createItem(jobDataset, name, inputs=None, outputs=[],
                    triggerHandler=None, props=None, retries=None):
         """
         create a BlackboardItem with the given properties
@@ -612,15 +624,16 @@ class JobItem(BasicBlackboardItem):
         out = JobItem(impl, jobDataset, name, inputs, outputs, triggerHandler, retries)
         return out
 
+
 class Props(object):
     """
     an enumeration of standard BlackboardItem property names
     """
-    NAME     = BasicBlackboardItem.NAME
-    SUCCESS  =     DataProductItem.SUCCESS
-    DATASET  =     DataProductItem.DATASET
-    INPUT    =             JobItem.INPUT
-    OUTPUT   =             JobItem.OUTPUT
+    NAME = BasicBlackboardItem.NAME
+    SUCCESS = DataProductItem.SUCCESS
+    DATASET = DataProductItem.DATASET
+    INPUT = JobItem.INPUT
+    OUTPUT = JobItem.OUTPUT
 
 
 __all__ = "BlackboardItem DictBlackboardItem PolicyBlackboardItem ImplBlackboardItem BasicBlackboardItem DataProductItem PipelineItem JobItem Props".split()

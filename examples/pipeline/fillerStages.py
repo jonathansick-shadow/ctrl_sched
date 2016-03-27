@@ -1,7 +1,7 @@
-# 
+#
 # LSST Data Management System
 # Copyright 2008, 2009, 2010 LSST Corporation.
-# 
+#
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
 #
@@ -9,14 +9,14 @@
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
-# You should have received a copy of the LSST License Statement and 
-# the GNU General Public License along with this program.  If not, 
+#
+# You should have received a copy of the LSST License Statement and
+# the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
@@ -28,7 +28,10 @@ import lsst.pex.harness.stage as harnessStage
 from lsst.pex.logging import Log
 from lsst.ctrl.sched import Dataset
 
-import os, sys, time
+import os
+import sys
+import time
+
 
 class FakeInput(harnessStage.ParallelProcessing):
     """
@@ -40,7 +43,7 @@ class FakeInput(harnessStage.ParallelProcessing):
             self.log = Log.getDefaultLog()
         self.mylog = Log(self.log, "inputStage")
         self.inputDatasetKey = \
-                    self.policy.getString("inputKeys.inputDatasets")
+            self.policy.getString("inputKeys.inputDatasets")
 
     def process(self, clipboard):
         inputs = clipboard.get(self.inputDatasetKey)
@@ -50,8 +53,10 @@ class FakeInput(harnessStage.ParallelProcessing):
         else:
             self.mylog.log(Log.WARN, "No input datasets given")
 
+
 class FakeInputStage(harnessStage.Stage):
     parallelClass = FakeInput
+
 
 class FakeProcessing(harnessStage.ParallelProcessing):
     """
@@ -63,11 +68,10 @@ class FakeProcessing(harnessStage.ParallelProcessing):
             self.log = Log.getDefaultLog()
         self.mylog = Log(self.log, "fakeProcess")
         self.jobIdentityItem = \
-                    self.policy.getString("inputKeys.jobIdentity")
+            self.policy.getString("inputKeys.jobIdentity")
         self.sleeptime = self.policy.getInt("sleep")
         self.visitCount = 0
         self.failOnVisitN = self.policy.getInt("failIteration")
-        
 
     def process(self, clipboard):
         jobIdentity = clipboard.get(self.jobIdentityItem)
@@ -78,8 +82,10 @@ class FakeProcessing(harnessStage.ParallelProcessing):
         if self.visitCount == self.failOnVisitN:
             raise RuntimeError("testing failure stage")
 
+
 class FakeProcessingStage(harnessStage.Stage):
     parallelClass = FakeProcessing
+
 
 class FakeOutput(harnessStage.ParallelProcessing):
     """
@@ -91,9 +97,9 @@ class FakeOutput(harnessStage.ParallelProcessing):
             self.log = Log.getDefaultLog()
         self.mylog = Log(self.log, "output")
         self.outputDatasetsKey = \
-                    self.policy.getString("inputKeys.outputDatasets")
+            self.policy.getString("inputKeys.outputDatasets")
         self.possibleDatasetsKey = \
-                    self.policy.getString("inputKeys.possibleDatasets")
+            self.policy.getString("inputKeys.possibleDatasets")
 
     def process(self, clipboard):
         expected = clipboard.get(self.possibleDatasetsKey)
@@ -108,13 +114,13 @@ class FakeOutput(harnessStage.ParallelProcessing):
                 outputds.append(ds)
         else:
             self.log.log(Log.WARN, "No expected datasets on clipboard")
-            
 
         clipboard.put(self.outputDatasetsKey, outputds)
+
 
 class FakeOutputStage(harnessStage.Stage):
     parallelClass = FakeOutput
 
-    
+
 
 

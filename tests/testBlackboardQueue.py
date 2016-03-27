@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
-# 
+#
 # LSST Data Management System
 # Copyright 2008, 2009, 2010 LSST Corporation.
-# 
+#
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
 #
@@ -11,14 +11,14 @@
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
-# You should have received a copy of the LSST License Statement and 
-# the GNU General Public License along with this program.  If not, 
+#
+# You should have received a copy of the LSST License Statement and
+# the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
@@ -40,6 +40,7 @@ from lsst.ctrl.sched.blackboard.queue import _PolicyBlackboardQueue
 from lsst.pex.policy import Policy, PAFWriter
 
 testdir = os.path.join(os.environ["CTRL_SCHED_DIR"], "tests")
+
 
 class AbsBBItemQTestCase(unittest.TestCase):
 
@@ -63,6 +64,7 @@ class AbsBBItemQTestCase(unittest.TestCase):
         self.assertRaises(RuntimeError, q.insert, None)
         self.assertRaises(RuntimeError, q.transferNextTo, q, 0)
         self.assertRaises(RuntimeError, q.iterate)
+
 
 class FSQueueFailBaseTestCase(unittest.TestCase):
 
@@ -95,6 +97,7 @@ class FSQueueFailBaseTestCase(unittest.TestCase):
                           "/goober/miser",
                           bb.PolicyBlackboardItem.createFormatter())
 
+
 class FSQueueTestCase(unittest.TestCase):
 
     def setUp(self):
@@ -108,7 +111,6 @@ class FSQueueTestCase(unittest.TestCase):
             for key in data.keys():
                 out._setProperty(key, data[key])
         return out
-            
 
     def tearDown(self):
         del self.q
@@ -148,7 +150,7 @@ class FSQueueTestCase(unittest.TestCase):
             print >> f, "boo"
         pending = self.q.pendingAddFor(filename)
         self.assertEquals(pending, ".add.1."+filename)
-        
+
         pending = self.q.pendingDelFor(filename)
         self.assertEquals(pending, ".del."+filename)
 
@@ -158,7 +160,6 @@ class FSQueueTestCase(unittest.TestCase):
             print >> f, "boo"
         pending = self.q.pendingDelFor(filename)
         self.assertEquals(pending, ".del.1."+filename)
-        
 
     def testAppend(self):
         self.q.append(self._newItem({"panel": 1, "foo": "bar"}))
@@ -167,7 +168,7 @@ class FSQueueTestCase(unittest.TestCase):
 
         self.assert_(os.path.exists(os.path.join(self.dbdir, "_order.list")))
         self.assert_(os.path.exists(os.path.join(self.dbdir, "unknown.paf")))
-    
+
         self.q.append(self._newItem({"panel": 1, "foo": "bar"}))
         self.assertEquals(self.q.length(), 2)
         self.assert_(os.path.exists(os.path.join(self.dbdir, "unknown.1.paf")))
@@ -184,6 +185,7 @@ class FSQueueTestCase(unittest.TestCase):
         self.assertEquals(files[0], "unknown.paf")
         self.assertEquals(files[1], "unknown.1.paf")
         self.assertEquals(files[2], "bar.paf")
+
 
 class InMemoryBBQueueTestCase(unittest.TestCase):
 
@@ -228,7 +230,7 @@ class InMemoryBBQueueTestCase(unittest.TestCase):
         if hasattr(item, "filename"):
             deleted = item.filename
             self.assertEquals(deleted,
-                              os.path.join(self.dbdir,".del.item1.paf"))
+                              os.path.join(self.dbdir, ".del.item1.paf"))
             self.assert_(os.path.exists(deleted))
 
         item = self.q.get(0)
@@ -297,7 +299,7 @@ class InMemoryBBQueueTestCase(unittest.TestCase):
         item = self.q.get(1)
         self.assertEquals(item["NAME"], "item1")
         self.assertEquals(item["pos"], 1)
-        
+
     def testInsertAtEmpty(self):
         self.assertEquals(self.q.length(), 0)
 
@@ -307,7 +309,7 @@ class InMemoryBBQueueTestCase(unittest.TestCase):
         item = self.q.get(0)
         self.assertEquals(item["NAME"], "item3")
         self.assertEquals(item["pos"], 3)
-        
+
     def testInsertAtMid(self):
         self.q.append(self._newItem("item1", {"pos": 1}))
         self.q.append(self._newItem("item2", {"pos": 2}))
@@ -322,7 +324,7 @@ class InMemoryBBQueueTestCase(unittest.TestCase):
         item = self.q.get(0)
         self.assertEquals(item["NAME"], "item1")
         self.assertEquals(item["pos"], 1)
-        
+
     def testInsertAtEnd(self):
         self.q.append(self._newItem("item1", {"pos": 1}))
         self.q.append(self._newItem("item2", {"pos": 2}))
@@ -340,7 +342,7 @@ class InMemoryBBQueueTestCase(unittest.TestCase):
         item = self.q.get(1)
         self.assertEquals(item["NAME"], "item2")
         self.assertEquals(item["pos"], 2)
-        
+
         self.q.insertAt(self._newItem("item3", {"pos": 3}), 10)
         self.assertEquals(self.q.length(), 4)
 
@@ -356,7 +358,7 @@ class InMemoryBBQueueTestCase(unittest.TestCase):
         item = self.q.get(1)
         self.assertEquals(item["NAME"], "item2")
         self.assertEquals(item["pos"], 2)
-        
+
     def testInsert(self):
         self.q.insert(self._newItem("item1"))
         self.assertEquals(self.q.length(), 1)
@@ -384,7 +386,7 @@ class InMemoryBBQueueTestCase(unittest.TestCase):
     def testTransferFromEmpty(self):
         other = bbq.InMemoryBlackboardQueue()
         self.assertRaises(bb.EmptyQueueError, self.q.transferNextTo, other)
-        
+
     def testTransfer(self):
         other = bbq.InMemoryBlackboardQueue()
 
@@ -416,6 +418,7 @@ class InMemoryBBQueueTestCase(unittest.TestCase):
         self.assertEquals(other.get(1)["pos"], 2)
         self.assertEquals(other.get(2)["pos"], 3)
 
+
 class FSQueueBaseTestCase(InMemoryBBQueueTestCase):
 
     def setUp(self):
@@ -442,7 +445,7 @@ class FSQueueBaseTestCase(InMemoryBBQueueTestCase):
 
         self.assert_(os.path.exists(os.path.join(self.dbdir, "_order.list")))
         self.assert_(os.path.exists(os.path.join(self.dbdir, "item1.paf")))
-    
+
         self.q.append(self._newItem("item1", {"panel": 1, "foo": "bar"}))
         self.assertEquals(self.q.length(), 2)
         self.assert_(os.path.exists(os.path.join(self.dbdir, "item1.1.paf")))
@@ -450,7 +453,7 @@ class FSQueueBaseTestCase(InMemoryBBQueueTestCase):
         self.q.append(self._newItem("item3", {"panel": 1, "foo": "bar"}))
         self.assertEquals(self.q.length(), 3)
         self.assert_(os.path.exists(os.path.join(self.dbdir, "item3.paf")))
-        
+
         if hasattr(self.q, "_sd"):
             files = self.q._sd.files
             self.assertEquals(files[0], "item1.paf")
@@ -460,7 +463,7 @@ class FSQueueBaseTestCase(InMemoryBBQueueTestCase):
             self.assertEquals(files[0], "item1.paf")
             self.assertEquals(files[1], "item1.1.paf")
             self.assertEquals(files[2], "item3.paf")
-        
+
     def testTransfer(self):
         self.assert_(not os.path.exists(self.dbdir+"2"))
         other = _PolicyBlackboardQueue(self.dbdir+"2")
@@ -507,6 +510,7 @@ class FSQueueBaseTestCase(InMemoryBBQueueTestCase):
         self.assertEquals(self.q.get(1)["pos"], 2)
         self.assertEquals(self.q.get(2)["pos"], 3)
 
+
 class TransactionalBBQueueTestCase(FSQueueBaseTestCase):
 
     def setUp(self):
@@ -534,7 +538,7 @@ class TransactionalBBQueueTestCase(FSQueueBaseTestCase):
             self.assertEquals(self.q.length(), 3)
             self.q.insert(self._newItem("item4", {"pos": 4}), 10)
             self.assertEquals(self.q.length(), 4)
-            
+
         self.assertEquals(self.q.length(), 4)
         self.assertEquals(self.q.get(0).getName(), "item2")
         self.assertEquals(self.q.get(1).getName(), "item2a")
@@ -546,7 +550,7 @@ class TransactionalBBQueueTestCase(FSQueueBaseTestCase):
         self.assertEquals(self.q._dskq.get(0).getProperty("NAME"), "item2")
         self.assertEquals(self.q._dskq.get(1).getProperty("NAME"), "item2a")
         self.assertEquals(self.q._dskq.get(3).getProperty("NAME"), "item4")
-        
+
     def testRollback1(self):
         """
         test rolling back from a non-commit error within the transaction
@@ -558,22 +562,22 @@ class TransactionalBBQueueTestCase(FSQueueBaseTestCase):
 
         # pdb.set_trace()
         try:
-          with self.q:
-            self.assertEquals(self.q._rbq.length(), 3)
+            with self.q:
+                self.assertEquals(self.q._rbq.length(), 3)
 
-            item = self.q.pop(0)
-            self.assertEquals(self.q.length(), 2)
-            self.assertEquals(self.q._rbq.length(), 3)
-            self.assertEquals(item.getName(), "item1")
+                item = self.q.pop(0)
+                self.assertEquals(self.q.length(), 2)
+                self.assertEquals(self.q._rbq.length(), 3)
+                self.assertEquals(item.getName(), "item1")
 
-            self.q.insertAt(self._newItem("item2a", {"pos": 2}), 1)
-            self.assertEquals(self.q.length(), 3)
-            self.q.insert(self._newItem("item4", {"pos": 4}), 10)
-            self.assertEquals(self.q.length(), 4)
-            raise RuntimeError("testing rollback")
+                self.q.insertAt(self._newItem("item2a", {"pos": 2}), 1)
+                self.assertEquals(self.q.length(), 3)
+                self.q.insert(self._newItem("item4", {"pos": 4}), 10)
+                self.assertEquals(self.q.length(), 4)
+                raise RuntimeError("testing rollback")
         except RuntimeError:
             pass
-            
+
         self.assertEquals(self.q.length(), 3)
         self.assertEquals(self.q.get(0).getName(), "item1")
         self.assertEquals(self.q.get(1).getName(), "item2")
@@ -585,7 +589,7 @@ class TransactionalBBQueueTestCase(FSQueueBaseTestCase):
         self.assertEquals(self.q._dskq.get(0).getProperty("NAME"), "item1")
         self.assertEquals(self.q._dskq.get(1).getProperty("NAME"), "item2")
         self.assertEquals(self.q._dskq.get(2).getProperty("NAME"), "item3")
-        
+
     def testRollback2(self):
         """
         test rolling back from a commit error within the transaction
@@ -598,28 +602,28 @@ class TransactionalBBQueueTestCase(FSQueueBaseTestCase):
         # pdb.set_trace()
         dbdir = self.q._dskq._dbdir
         try:
-          with self.q:
-            self.assertEquals(self.q._rbq.length(), 3)
+            with self.q:
+                self.assertEquals(self.q._rbq.length(), 3)
 
-            item = self.q.pop(0)
-            self.assertEquals(self.q.length(), 2)
-            self.assertEquals(self.q._rbq.length(), 3)
-            self.assertEquals(item.getName(), "item1")
+                item = self.q.pop(0)
+                self.assertEquals(self.q.length(), 2)
+                self.assertEquals(self.q._rbq.length(), 3)
+                self.assertEquals(item.getName(), "item1")
 
-            self.q.insertAt(self._newItem("item2a", {"pos": 2}), 1)
-            self.assertEquals(self.q.length(), 3)
-            self.q.insert(self._newItem("item4", {"pos": 4}), 10)
-            self.assertEquals(self.q.length(), 4)
+                self.q.insertAt(self._newItem("item2a", {"pos": 2}), 1)
+                self.assertEquals(self.q.length(), 3)
+                self.q.insert(self._newItem("item4", {"pos": 4}), 10)
+                self.assertEquals(self.q.length(), 4)
 
-            # corrupt the internal data so that the disk commit fails
-            os.remove(os.path.join(dbdir, "item1.paf"))
+                # corrupt the internal data so that the disk commit fails
+                os.remove(os.path.join(dbdir, "item1.paf"))
         except Exception, ex:
             self.assert_(isinstance(ex, OSError),
                          "unexpected error: " + str(ex))
             self.q._dskq._dbdir = dbdir
             dbdir = None
         self.assert_(dbdir is None)
-            
+
         self.assertEquals(self.q.length(), 3)
         self.assertEquals(self.q.get(0).getName(), "item1")
         self.assertEquals(self.q.get(1).getName(), "item2")
@@ -631,9 +635,8 @@ class TransactionalBBQueueTestCase(FSQueueBaseTestCase):
         self.assertEquals(self.q._dskq.get(0).getProperty("NAME"), "item1")
         self.assertEquals(self.q._dskq.get(1).getProperty("NAME"), "item2")
         self.assertEquals(self.q._dskq.get(2).getProperty("NAME"), "item3")
-        
 
-        
+
 class PolicyBBQueueTestCase(FSQueueBaseTestCase):
 
     def setUp(self):
@@ -644,13 +647,14 @@ class PolicyBBQueueTestCase(FSQueueBaseTestCase):
     def _newItem(self, name, data=None):
         return self.q.createItem(name, data)
 
-        
+
 class DataQueueTestCase(PolicyBBQueueTestCase):
 
     def setUp(self):
         # pdb.set_trace()
         self.dbdir = os.path.join(testdir, "testqueue")
         self.q = bb.DataQueue(self.dbdir)
+
 
 class JobQueueTestCase(PolicyBBQueueTestCase):
 
@@ -660,7 +664,6 @@ class JobQueueTestCase(PolicyBBQueueTestCase):
         self.q = bb.JobQueue(self.dbdir)
 
 
-        
 __all__ = "AbsBBItemQTestCase FSQueueFailBaseTestCase FSQueueTestCase InMemoryBBQueueTestCase FSQueueBaseTestCase TransactionalBBQueueTestCase PolicyBBQueueTestCase DataQueueTestCase JobQueueTestCase ".split()
 
 if __name__ == "__main__":

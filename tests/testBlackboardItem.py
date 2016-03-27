@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
-# 
+#
 # LSST Data Management System
 # Copyright 2008, 2009, 2010 LSST Corporation.
-# 
+#
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
 #
@@ -11,14 +11,14 @@
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
-# You should have received a copy of the LSST License Statement and 
-# the GNU General Public License along with this program.  If not, 
+#
+# You should have received a copy of the LSST License Statement and
+# the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
@@ -40,6 +40,7 @@ from lsst.pex.policy import Policy, PAFWriter
 
 testdir = os.path.join(os.environ["CTRL_SCHED_DIR"], "tests")
 
+
 class AbsBBItemTestCase(unittest.TestCase):
 
     def setUp(self):
@@ -59,11 +60,12 @@ class AbsBBItemTestCase(unittest.TestCase):
         self.assertRaises(RuntimeError, bbi.hasProperty, "goofy")
         self.assertRaises(RuntimeError, bbi.has_key, "goofy")
 
+
 class DictBBItemTestCase(unittest.TestCase):
 
     def setUp(self):
         self.bbi = bb.DictBlackboardItem({"foo": "bar", "count": 3,
-                                          "files": [ "goob", "gurn"] })
+                                          "files": ["goob", "gurn"]})
         self.initCount = 3
 
     def tearDown(self):
@@ -87,7 +89,7 @@ class DictBBItemTestCase(unittest.TestCase):
         self.assertEquals(self.bbi["files"], ["goob", "gurn"])
         self.assertEquals(self.bbi.getProperty("goob", 5), 5)
         self.assert_(self.bbi.getProperty("goob") is None)
-        
+
     def testSetProp(self):
         self.bbi._setProperty("henry", "hank")
         self.assertEquals(self.bbi.getProperty("henry"), "hank")
@@ -110,11 +112,12 @@ class DictBBItemTestCase(unittest.TestCase):
         self.assert_("files" in names)
         self.assert_("goob" not in names)
 
+
 class PolicyBBItemTestCase(DictBBItemTestCase):
 
     propfile = os.path.join(testdir, "props.paf")
     tmppropfile = os.path.join(testdir, "tmpprops.paf")
-    
+
     def setUp(self):
         if not os.path.exists(self.propfile):
             p = Policy()
@@ -125,7 +128,7 @@ class PolicyBBItemTestCase(DictBBItemTestCase):
             w = PAFWriter(self.propfile)
             w.write(p, True)
             w.close()
-        
+
         self.bbi = bb.PolicyBlackboardItem(self.propfile)
 
         self.initCount = 3
@@ -166,23 +169,25 @@ class PolicyBBItemTestCase(DictBBItemTestCase):
         self.assert_(not os.path.exists(self.tmppropfile))
         fmtr.write(self.tmppropfile, self.bbi)
         self.assert_(os.path.exists(self.tmppropfile))
-        
+
         del self.bbi
         self.bbi = fmtr.openItem(self.tmppropfile)
         self.testGetProp()
-        
+
+
 class ImplBBItemTestCase1(DictBBItemTestCase):
 
     def setUp(self):
         self.bbi = bb.ImplBlackboardItem(
             bb.DictBlackboardItem({"foo": "bar", "count": 3,
-                                          "files": [ "goob", "gurn"] }))
+                                          "files": ["goob", "gurn"]}))
         self.initCount = 3
-        
+
     def tearDown(self):
         pass
 
     # inherits all tests from DictBBItemTestCase
+
 
 class ImplBBItemTestCase2(ImplBBItemTestCase1):
 
@@ -195,13 +200,14 @@ class ImplBBItemTestCase2(ImplBBItemTestCase1):
         impl = bb.PolicyBlackboardItem()
         impl._props = p
         self.bbi = bb.ImplBlackboardItem(impl)
-            
+
         self.initCount = 3
-        
+
     def tearDown(self):
         pass
 
     # inherits all tests from DictBBItemTestCase
+
 
 class BasicBBItemTestCase1(ImplBBItemTestCase1):
 
@@ -209,16 +215,16 @@ class BasicBBItemTestCase1(ImplBBItemTestCase1):
         self.name = "Goob"
         self.bbi = bb.BasicBlackboardItem(
             bb.DictBlackboardItem({"foo": "bar", "count": 3,
-                                          "files": [ "goob", "gurn"] }),
+                                          "files": ["goob", "gurn"]}),
             self.name)
 
         self.initCount = 4
-        
+
     def tearDown(self):
         pass
 
     # inherits all tests from DictBBItemTestCase
-    
+
     def testNameSet(self):
         self.assertEquals(self.bbi.getProperty("NAME"), self.name)
 
@@ -240,21 +246,23 @@ class BasicBBItemTestCase1(ImplBBItemTestCase1):
         self.assert_("NAME" in names)
         self.assert_("goob" not in names)
 
+
 class BasicBBItemTestCase2(BasicBBItemTestCase1):
 
     def setUp(self):
         self.name = "Goob"
         self.bbi = bb.BasicBlackboardItem.createItem(self.name,
-                                                 {"foo": "bar", "count": 3,
-                                                  "files": [ "goob", "gurn"] })
-        
+                                                     {"foo": "bar", "count": 3,
+                                                      "files": ["goob", "gurn"]})
+
         self.initCount = 4
-        
+
     def tearDown(self):
         pass
 
     # inherits all tests from DictBBItemTestCase
-    
+
+
 class DataProdBBItemTestCase(BasicBBItemTestCase1):
 
     def setUp(self):
@@ -266,10 +274,10 @@ class DataProdBBItemTestCase(BasicBBItemTestCase1):
         self.name = ds.toString()
 
         self.bbi = bb.DataProductItem.createItem(dataset=ds,
-                                           props={"foo": "bar", "count": 3,
-                                                  "files": [ "goob", "gurn"] })
+                                                 props={"foo": "bar", "count": 3,
+                                                        "files": ["goob", "gurn"]})
         self.initCount = 12
-        
+
     def tearDown(self):
         pass
 
@@ -294,7 +302,9 @@ class DataProdBBItemTestCase(BasicBBItemTestCase1):
         self.assertEquals(ds.ids["visitid"], 88)
         self.assertEquals(ds.ids["ccdid"], 12)
 
+
 class JobItemTestCase(unittest.TestCase):
+
     def setUp(self):
         type = "CalExp"
         path = "goob/CalExp-v88-c12.fits"
@@ -303,6 +313,7 @@ class JobItemTestCase(unittest.TestCase):
         ds = Dataset(type, path, ccdid=ccdid, visitid=visitid)
 
         self.job = bb.JobItem.createItem(ds, "job")
+
     def tearDown(self):
         pass
 
@@ -310,17 +321,18 @@ class JobItemTestCase(unittest.TestCase):
         self.assert_(not self.job.isSuccessful())
         self.job.markSuccessful()
         self.assert_(self.job.isSuccessful())
-    
+
 
 class PipelineItemTestCase(unittest.TestCase):
 
     def setUp(self):
         self.pipeline = bb.PipelineItem.createItem("job", "testing", 4294967304L)
+
     def tearDown(self):
         pass
 
     def testOriginatorEncoding(self):
-        #pdb.set_trace()
+        # pdb.set_trace()
         quad = bbi._encodeId(4294967304L)
         self.assertEquals(quad[0], 0)
         self.assertEquals(quad[1], 1)
@@ -331,8 +343,7 @@ class PipelineItemTestCase(unittest.TestCase):
 
         arb = 736429496730412L
         self.assertEquals(bbi._decodeId(bbi._encodeId(arb)), arb)
-        
-        
+
 
 __all__ = "AbsBBItemTestCase DictBBItemTestCase PolicyBBItemTestCase ImplBBItemTestCase1".split()
 

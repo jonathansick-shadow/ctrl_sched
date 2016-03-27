@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
-# 
+#
 # LSST Data Management System
 # Copyright 2008, 2009, 2010 LSST Corporation.
-# 
+#
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
 #
@@ -11,21 +11,25 @@
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
-# You should have received a copy of the LSST License Statement and 
-# the GNU General Public License along with this program.  If not, 
+#
+# You should have received a copy of the LSST License Statement and
+# the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
 #
 from __future__ import with_statement
-import sys, os, time, re
-import optparse, traceback
+import sys
+import os
+import time
+import re
+import optparse
+import traceback
 
 from lsst.pex.logging import Log, DualLog
 
@@ -37,18 +41,18 @@ usage = """%prog [-vqsf] [-b brokerhost] [-p brokerport] [-i iddelim] [-e eqdeli
 desc = """Send dataset-available events.  Each given list file will be processed in order.  Any datasets provided via -D are alerted before those in the list files.  The options -i, -e, -I, -f and t apply to the datasets given via -D and all datasets in the list files where these attributes have not set within the files themselves.  A runid must always be specified via the -r option."""
 
 cl = optparse.OptionParser(usage=usage, description=desc)
-cl.add_option("-v", "--verbose", action="store_const", default=0, 
+cl.add_option("-v", "--verbose", action="store_const", default=0,
               const=Log.DEBUG, dest="verb", help="print extra status messages")
-cl.add_option("-q", "--quiet", action="store_const", 
+cl.add_option("-q", "--quiet", action="store_const",
               const=Log.WARN+1, dest="verb",
               help="limit screen messages to error messages")
-cl.add_option("-s", "--silent", action="store_const", 
+cl.add_option("-s", "--silent", action="store_const",
               const=Log.FATAL+1, dest="verb",
               help="limit screen messages to error messages")
-cl.add_option("-b", "--broker-host", action="store", dest="brokerhost", 
+cl.add_option("-b", "--broker-host", action="store", dest="brokerhost",
               help="hostname where event broker is running")
 cl.add_option("-p", "--broker-port", action="store", type=int,
-              dest="brokerport", 
+              dest="brokerport",
               help="port number where event broker is listening")
 cl.add_option("-r", "--runid", action="store", default=None, dest="runid",
               help="the runid the pipelines were launched under")
@@ -58,7 +62,7 @@ cl.add_option("-t", "--topic", action="store", metavar="TOPIC", default=None,
 cl.add_option("-I", "--interval", metavar="SEC", action="store", default=0,
               type='float', dest="interval",
               help="the default time gap to insert between events.  This can be over-ridden by the dataset files.")
-cl.add_option("-f", "--tell-fail", action="store_true", default=False, 
+cl.add_option("-f", "--tell-fail", action="store_true", default=False,
               dest="fail",
               help="if set, datasets will be marked as failed by default.  This can be over-ridden by the dataset files.")
 cl.add_option("-m", "--max", action="store", type="int", dest="max",
@@ -71,17 +75,18 @@ cl.add_option("-e", "--eq-delim", action="store", dest="eqdelim", default="=",
               metavar="CHARS",
               help="the default delimiters to assume separate a dataset id name from its value")
 cl.add_option("-F", "--format", action="store", dest="format",
-              metavar="DATADESC", 
+              metavar="DATADESC",
               help="the default dataset description format; see format directive via -H")
 cl.add_option("-D", "--dataset", action="append", dest="datasets",
-              metavar="DATADESC", 
+              metavar="DATADESC",
               help="a dataset to send an event for, in lieu of or before datasets given in the dataset list files")
-cl.add_option("-H", "--syntax-help", action="store_true", default=False, 
+cl.add_option("-H", "--syntax-help", action="store_true", default=False,
               dest="synhelp",
               help="print help on dataset list file syntax and then exit.  All other inputs are ignored")
 
 
 logger = Log(Log.getDefaultLog(), "announceDataset")
+
 
 def main():
     (cl.opts, cl.args) = cl.parse_args()
@@ -186,13 +191,14 @@ def sendEventsFor(data, lines, max=-1):
                 ecount += 1
                 if max >= 0 and ecount >= max:
                     break
-                
+
             else:
                 debug("No dataset parsed from dataset line: %s", line)
 
     return ecount
 
 directives = "topic pause success fail interval iddelim eqdelim intids format".split()
+
 
 def updateControlData(ctrl, line):
     args = line.split(None, 1)
@@ -253,11 +259,13 @@ def updateControlData(ctrl, line):
             ctrl[cmd] = None
         else:
             ctrl[cmd] = makeFormat(args)
-        
+
 
 cnvspec = re.compile(r"%\(([^\)]+)\)([#0\- \+])?(\d+|\*)?(\.(\d+|\*))?([hlL]?)([diouxXeEfFgGcrs])")
 
+
 class FormatRe(object):
+
     def __init__(self, fmtstr):
         self.fmtstr = fmtstr
         self.re = fmtstr
@@ -278,7 +286,7 @@ class FormatRe(object):
         if data.has_key("type"):
             tp = data["type"]
         out = Dataset(tp)
-        
+
         del data["type"]
         out.ids = data
 
@@ -298,8 +306,7 @@ class FormatRe(object):
 
     def addID(self, name, valtype):
         self.ids[name] = valtype
-        
-    
+
 
 def makeFormat(fmtstr):
     if not fmtstr:
@@ -318,8 +325,10 @@ def makeFormat(fmtstr):
         if "srouxXc".find(cnvtype) >= 0:
             width = "+"
             if min is not None or max is not None:
-                if min is None:  min = ''
-                if max is None:  max = ''
+                if min is None:
+                    min = ''
+                if max is None:
+                    max = ''
                 width = "{min,max}"
             expr = ".%s" % width
 
@@ -346,8 +355,10 @@ def makeFormat(fmtstr):
         elif "fFgG".find(cnvtype) >= 0:
             # floating point format
             valtype = 'f'
-            if max is None: max = "6"
-            if max == '*':  max = None
+            if max is None:
+                max = "6"
+            if max == '*':
+                max = None
             expr = ""
             if cnvflag.find('+') >= 0:
                 expr += r"[+\-]"
@@ -384,7 +395,7 @@ def toDatasets(lines, ctrl, intids=None):
         lines = [lines]
     if intids is None:
         intids = ctrl["intids"]
-    
+
     out = []
     if ctrl["format"]:
         for line in lines:
@@ -428,24 +439,30 @@ def toDatasets(lines, ctrl, intids=None):
 
     return out
 
+
 def _log(vol, msg, data=None):
     if data:
         logger.log(vol, msg % data)
     else:
         logger.log(vol, msg)
 
+
 def fail(msg, data=None):
     _log(Log.FATAL, msg, data)
     sys.exit(1)
 
+
 def warn(msg, data=None):
     _log(Log.WARN, msg, data)
+
 
 def inform(msg, data):
     _log(Log.INFO, msg, data)
 
+
 def debug(msg, data):
     _log(Log.DEBUG, msg, data)
+
 
 def syntaxHelp(prog="announceDataset"):
     if prog:
@@ -539,4 +556,4 @@ if __name__ == "__main__":
         traceback.print_exc()
         sys.exit(2)
 
-    
+

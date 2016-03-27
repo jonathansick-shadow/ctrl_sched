@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
-# 
+#
 # LSST Data Management System
 # Copyright 2008, 2009, 2010 LSST Corporation.
-# 
+#
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
 #
@@ -11,21 +11,25 @@
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
-# You should have received a copy of the LSST License Statement and 
-# the GNU General Public License along with this program.  If not, 
+#
+# You should have received a copy of the LSST License Statement and
+# the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
 #
 from __future__ import with_statement
-import sys, os, time, re
-import optparse, traceback
+import sys
+import os
+import time
+import re
+import optparse
+import traceback
 
 from lsst.pex.logging import Log, DualLog
 
@@ -38,37 +42,38 @@ usage = """usage %%prog [-vqsf] [-b brokerhost] [-p brokerport] [-r runid] [-i i
 desc = """Send a specified JobOffice-related event"""
 
 cl = optparse.OptionParser(usage=usage, description=desc)
-cl.add_option("-v", "--verbose", action="store_true", default=False, 
+cl.add_option("-v", "--verbose", action="store_true", default=False,
               dest="toscreen", help="print all logging messages to screen")
 cl.add_option("-q", "--quiet", action="store_const", default=0,
               const=Log.WARN, dest="screenverb",
               help="limit screen messages to error messages")
-cl.add_option("-s", "--silent", action="store_const", 
+cl.add_option("-s", "--silent", action="store_const",
               const=Log.FATAL+1, dest="screenverb",
               help="limit screen messages to error messages")
-cl.add_option("-n", "--pipeline-name", action="store", dest="name", 
+cl.add_option("-n", "--pipeline-name", action="store", dest="name",
               help="name of the pipeline one is communicating with")
-cl.add_option("-b", "--broker-host", action="store", dest="brokerhost", 
+cl.add_option("-b", "--broker-host", action="store", dest="brokerhost",
               help="hostname where event broker is running")
 cl.add_option("-p", "--broker-port", action="store", type=int,
-              dest="brokerport", 
+              dest="brokerport",
               help="port number where event broker is listening")
 cl.add_option("-r", "--runid", action="store", default=None, dest="runid",
               help="the runid the pipelines were launched under")
-cl.add_option("-f", "--tell-fail", action="store_true", default=False, 
+cl.add_option("-f", "--tell-fail", action="store_true", default=False,
               dest="fail",
               help="when applicable, set the success flag to False")
 cl.add_option("-i", "--id-delim", action="store", dest="iddelim", default=" ",
               help="for dataset events, the delimiters look for to separate the dataset IDs")
-cl.add_option("-j", "--job-identity", action="store", dest="identity", 
+cl.add_option("-j", "--job-identity", action="store", dest="identity",
               help="the identifiers and values that define the job being processed, in dataset format (for assign command)")
-cl.add_option("-O", "--output-dataset", action="append", dest="outputs", 
+cl.add_option("-O", "--output-dataset", action="append", dest="outputs",
               help="an output dataset, in dataset format; may appear multiple times (for assign command)")
 cl.add_option("-o", "--orig-id", action="store", type="long", default=0L,
               dest="origid",
               help="for assign, the originator id to send to")
 
 logger = Log(Log.getDefaultLog(), "sendevent")
+
 
 def main():
     (cl.opts, cl.args) = cl.parse_args()
@@ -131,6 +136,7 @@ def main():
     sender.send(ev)
     sys.exit(0)
 
+
 def toDatasets(dsstrs, delim=r'\s', eqdelim='='):
     out = []
     delim = re.compile(r'[%s]' % delim)
@@ -157,25 +163,29 @@ def toDatasets(dsstrs, delim=r'\s', eqdelim='='):
 
     return out
 
+
 def _log(vol, msg, data=None):
     if data:
         logger.log(vol, msg % data)
     else:
         logger.log(vol, msg)
 
+
 def fail(msg, data=None):
     _log(Log.FATAL, msg, data)
     sys.exit(1)
 
+
 def warn(msg, data=None):
     _log(Log.WARN, msg, data)
+
 
 def inform(msg, data):
     _log(Log.INFO, msg, data)
 
+
 def debug(msg, data):
     _log(Log.DEBUG, msg, data)
-
 
 
 if __name__ == "__main__":

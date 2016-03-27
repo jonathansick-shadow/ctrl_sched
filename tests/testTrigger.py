@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
-# 
+#
 # LSST Data Management System
 # Copyright 2008, 2009, 2010 LSST Corporation.
-# 
+#
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
 #
@@ -11,14 +11,14 @@
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
-# You should have received a copy of the LSST License Statement and 
-# the GNU General Public License along with this program.  If not, 
+#
+# You should have received a copy of the LSST License Statement and
+# the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
@@ -49,10 +49,12 @@ locations = PropertySet()
 locations.set("input", testdir)
 LogicalLocation.setLocationMap(locations)
 
+
 class AbstractTriggerTestCase(unittest.TestCase):
 
     def setUp(self):
         pass
+
     def tearDown(self):
         pass
 
@@ -63,13 +65,14 @@ class AbstractTriggerTestCase(unittest.TestCase):
         t = Trigger(fromSubclass=True)
         self.assert_(t.recognize(None) is None)
 
+
 class SimpleTriggerTestCase(unittest.TestCase):
 
     def setUp(self):
         self.type = "CalExp"
-        self.ids = [ IntegerIDFilter("visit", values=88), 
-                     IntegerIDFilter("ccd", 0, 8), 
-                     IntegerIDFilter("amp", 0, 16)       ]
+        self.ids = [IntegerIDFilter("visit", values=88),
+                    IntegerIDFilter("ccd", 0, 8),
+                    IntegerIDFilter("amp", 0, 16)]
         self.idd = {}
         for id in self.ids:
             self.idd[id.name] = id
@@ -99,11 +102,10 @@ class SimpleTriggerTestCase(unittest.TestCase):
         ds = Dataset("Decal")
         self.assert_(t.recognize(ds))
 
-
     def testIds(self, t=None):
         if not t:
             t = SimpleTrigger(self.type, self.idd)
-        
+
         ds = Dataset(self.type)
         self.assert_(not t.recognize(ds))
 
@@ -122,7 +124,7 @@ class SimpleTriggerTestCase(unittest.TestCase):
     def testIds2(self, t=None):
         if not t:
             t = SimpleTrigger(ids=self.idd)
-        
+
         ds = Dataset(self.type)
         self.assert_(not t.recognize(ds))
 
@@ -160,7 +162,6 @@ class SimpleTriggerTestCase(unittest.TestCase):
         self.assertEquals(dss[0].ids["visit"], 88)
         self.assert_(dss[0].ids.has_key("filt"))
         self.assertEquals(dss[0].ids["filt"], 'r')
-
 
     def testFromPolicy(self):
         p = Policy()
@@ -201,7 +202,8 @@ class SimpleTriggerTestCase(unittest.TestCase):
 
 testds = Dataset("src",
                  ids={"visit": 85408535, "snap": 1, "raft": "4,3",
-                      "sensor": "2,2", "channel": "1,7" })
+                      "sensor": "2,2", "channel": "1,7"})
+
 
 class MapperTriggerTestCase(unittest.TestCase):
 
@@ -229,7 +231,7 @@ class MapperTriggerTestCase(unittest.TestCase):
     def testNoRecognize(self):
         ds = copy.deepcopy(testds)
         ds.type = "goob"
-        
+
         self.testFromPolicy()
         self.assert_(not self.trigger.recognize(ds))
 
@@ -240,11 +242,11 @@ class MapperTriggerTestCase(unittest.TestCase):
         self.assertEquals(jobs[0].type, 'source')
         self.assert_(jobs[0].ids.has_key('skyTile'))
         self.assertEquals(jobs[0].ids['skyTile'], 95127)
-        
+
     def testListJobs2(self):
         policy = self.schedpolicy.get("schedule.job.input")
         trigger = Trigger.fromPolicy(policy)
-        ds = Dataset("goob", ids={ "skyTile": 95127 })
+        ds = Dataset("goob", ids={"skyTile": 95127})
 
         inputs = trigger.listDatasets(ds)
         self.assertEquals(len(inputs), 8)
@@ -253,7 +255,7 @@ class MapperTriggerTestCase(unittest.TestCase):
         self.assert_(inputs[0].ids.has_key('raft'))
         self.assert_(inputs[0].ids.has_key('sensor'))
         self.assertEquals(inputs[0].ids['visit'], 85408535)
-        
+
 
 __all__ = "AbstractTriggerTestCase SimpleTriggerTestCase".split()
 

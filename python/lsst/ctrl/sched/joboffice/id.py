@@ -1,7 +1,7 @@
-# 
+#
 # LSST Data Management System
 # Copyright 2008, 2009, 2010 LSST Corporation.
-# 
+#
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
 #
@@ -9,14 +9,14 @@
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
-# You should have received a copy of the LSST License Statement and 
-# the GNU General Public License along with this program.  If not, 
+#
+# You should have received a copy of the LSST License Statement and
+# the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
@@ -27,6 +27,7 @@ from __future__ import with_statement
 
 from lsst.pex.policy import Policy, DefaultPolicyFile
 from lsst.ctrl.sched.base import _AbstractBase
+
 
 class IDFilter(_AbstractBase):
     """
@@ -91,7 +92,7 @@ class IDFilter(_AbstractBase):
         """
         self._notImplemented("recognize")
 
-    classLookup = { }
+    classLookup = {}
 
     @staticmethod
     def fromPolicy(policy):
@@ -110,6 +111,7 @@ class IDFilter(_AbstractBase):
             raise RuntimeError("programmer error class name lookup not implemented")
 
         return cls.fromPolicy(policy)
+
 
 class StringIDFilter(IDFilter):
     """
@@ -142,7 +144,7 @@ class StringIDFilter(IDFilter):
 
         if self.isUnconstrained():
             self.isstatic = False
-    
+
     def isUnconstrained(self):
         return not self.values
 
@@ -176,7 +178,7 @@ class StringIDFilter(IDFilter):
         return out
 
     _dictionary = None
-        
+
     @staticmethod
     def fromPolicy(policy):
         """
@@ -192,13 +194,16 @@ class StringIDFilter(IDFilter):
 
         name = "unknown"
         vals = None
-        if policy.exists("name"):   name = policy.getString("name")
-        if policy.exists("value"):  vals = policy.getArray("value")
+        if policy.exists("name"):
+            name = policy.getString("name")
+        if policy.exists("value"):
+            vals = policy.getArray("value")
 
         return StringIDFilter(name, vals)
 
 IDFilter.classLookup["String"] = StringIDFilter
 IDFilter.classLookup["StringIDFilter"] = StringIDFilter
+
 
 class IntegerIDFilter(IDFilter):
     """
@@ -229,7 +234,7 @@ class IntegerIDFilter(IDFilter):
         if values is not None:
             if not isinstance(values, list):
                 values = [values]
-            if len(filter(lambda v: not isinstance(v,int), values)) > 0:
+            if len(filter(lambda v: not isinstance(v, int), values)) > 0:
                 raise ValueError("IntegerIDFilter: non-integer value given for values: " + str(self.values))
             self.values = list(values)
 
@@ -308,10 +313,14 @@ class IntegerIDFilter(IDFilter):
 
         name = "unknown"
         min = lim = vals = None
-        if policy.exists("name"):   name = policy.getString("name")
-        if policy.exists("min"):    min  = policy.getInt("min")
-        if policy.exists("lim"):    lim  = policy.getInt("lim")
-        if policy.exists("value"):  vals = policy.getArray("value")
+        if policy.exists("name"):
+            name = policy.getString("name")
+        if policy.exists("min"):
+            min = policy.getInt("min")
+        if policy.exists("lim"):
+            lim = policy.getInt("lim")
+        if policy.exists("value"):
+            vals = policy.getArray("value")
 
         return IntegerIDFilter(name, min, lim, vals)
 

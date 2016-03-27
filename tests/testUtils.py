@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
-# 
+#
 # LSST Data Management System
 # Copyright 2008, 2009, 2010 LSST Corporation.
-# 
+#
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
 #
@@ -11,14 +11,14 @@
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
-# You should have received a copy of the LSST License Statement and 
-# the GNU General Public License along with this program.  If not, 
+#
+# You should have received a copy of the LSST License Statement and
+# the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
@@ -51,11 +51,13 @@ ampid: 5
 }
 """
 
+
 class RunIdTestCase(unittest.TestCase):
 
     def setUp(self):
         self.base = "rlp"
         self.lim = 1000
+
     def tearDown(self):
         pass
 
@@ -82,6 +84,7 @@ class RunIdTestCase(unittest.TestCase):
                           "wrong length for lim=%d: %s" % (self.lim, runid))
         self.assertNotEquals(utils.createRunId(self.base, self.lim), runid,
                              "created duplicate runids: " + runid)
+
 
 class EventSenderTestCase(unittest.TestCase):
 
@@ -124,18 +127,18 @@ class EventSenderTestCase(unittest.TestCase):
         self.assertEquals(event.getPropertySet().getString("pipelineName"),
                           "ccdAssembly")
         self.assertEquals(event.getOriginatorId(), origid)
-        
+
         dslist = event.getPropertySet().getArrayString("inputs")
         if dslist is not None:
             dslist = utils.unserializeDatasetList(dslist)
         self.assert_(dslist is not None)
         self.assertEquals(len(dslist), 2)
         self.assertEquals(dslist[0].type, "PostISR")
-        
+
     def testCommandEvent(self):
         dest = random.randint(1, 0xffff)
         self.rcvr = EventReceiver(brokerhost, self.topic,
-                       "RUNID='%s' and DESTINATIONID=%d" % (self.runid, dest))
+                                  "RUNID='%s' and DESTINATIONID=%d" % (self.runid, dest))
 
         status = "channel"
         ev = self.sender.createCommandEvent(status, dest)
@@ -165,7 +168,7 @@ class EventSenderTestCase(unittest.TestCase):
                           "ccdAssembly")
         self.assertEquals(event.getOriginatorId(), origid)
         self.assertEquals(event.getDestinationId(), dest)
-        
+
         dslist = event.getPropertySet().getArrayString("inputs")
         if dslist is not None:
             dslist = utils.unserializeDatasetList(dslist)
@@ -188,7 +191,7 @@ class EventSenderTestCase(unittest.TestCase):
         self.assertEquals(event.getPropertySet().getString("pipelineName"),
                           "ccdAssembly")
         self.assertEquals(event.getOriginatorId(), origid)
-        
+
         dslist = event.getPropertySet().getArrayString("dataset")
         if dslist is not None:
             dslist = utils.unserializeDatasetList(dslist)
@@ -202,13 +205,14 @@ class ImporterTestCase(unittest.TestCase):
 
     def setUp(self):
         pass
+
     def tearDown(self):
         pass
 
     def testNoFind(self):
         self.assertRaises(ImportError, utils.importClass,
                           "lsst.ctrl.sched.goober.Goob")
-        
+
     def testImport(self):
         tcls = utils.importClass("lsst.ctrl.sched.joboffice.triggers.Trigger")
         self.assert_(isinstance(tcls, type))

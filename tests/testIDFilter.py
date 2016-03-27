@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
-# 
+#
 # LSST Data Management System
 # Copyright 2008, 2009, 2010 LSST Corporation.
-# 
+#
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
 #
@@ -11,14 +11,14 @@
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
-# You should have received a copy of the LSST License Statement and 
-# the GNU General Public License along with this program.  If not, 
+#
+# You should have received a copy of the LSST License Statement and
+# the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
@@ -36,10 +36,12 @@ import time
 import lsst.ctrl.sched.joboffice.id as id
 from lsst.pex.policy import Policy
 
+
 class AbstractIDFilterTestCase(unittest.TestCase):
 
     def setUp(self):
         pass
+
     def tearDown(self):
         pass
 
@@ -50,10 +52,12 @@ class AbstractIDFilterTestCase(unittest.TestCase):
         idf = id.IDFilter("Goofy", fromSubclass=True)
         self.assertRaises(RuntimeError, idf.recognize, 1)
 
+
 class IntegerIDFilterTestCase(unittest.TestCase):
 
     def setUp(self):
         pass
+
     def tearDown(self):
         pass
 
@@ -69,7 +73,6 @@ class IntegerIDFilterTestCase(unittest.TestCase):
         self.assertEquals(idf.recognize("-1"), -1)
         self.assert_(idf.recognize("5,0") is None)
         self.assertEquals(idf.recognize(3), 3)
-        
 
     def testMin(self, idf=None):
         if not idf:
@@ -154,7 +157,7 @@ class IntegerIDFilterTestCase(unittest.TestCase):
 
     def testValues4(self, idf=None):
         if not idf:
-            idf = id.IntegerIDFilter("visit", 0, 16, values=[20,25])
+            idf = id.IntegerIDFilter("visit", 0, 16, values=[20, 25])
         self.assertEquals(idf.name, "visit")
         self.assert_(not idf.isUnconstrained())
 
@@ -170,7 +173,7 @@ class IntegerIDFilterTestCase(unittest.TestCase):
         self.assertEquals(idf.recognize(25), 25)
 
     def testAllowed(self):
-        idf = id.IntegerIDFilter("visit", 0, 16, values=[20,25])
+        idf = id.IntegerIDFilter("visit", 0, 16, values=[20, 25])
         self.assert_(idf.hasStaticValueSet())
 
         vals = idf.allowedValues()
@@ -207,7 +210,7 @@ class IntegerIDFilterTestCase(unittest.TestCase):
         p.set("className", "lsst.ctrl.sched.joboffice.id.IntegerIDFilter")
         self.assertRaises(RuntimeError, id.IDFilter.fromPolicy, p)
         p.set("className", "Integer")
-        
+
         p.set("min", 3)
         idf = id.IDFilter.fromPolicy(p)
         self.testMin(idf)
@@ -220,10 +223,12 @@ class IntegerIDFilterTestCase(unittest.TestCase):
         idf = id.IDFilter.fromPolicy(p)
         self.testValues4(idf)
 
+
 class StringIDFilterTestCase(unittest.TestCase):
 
     def setUp(self):
         pass
+
     def tearDown(self):
         pass
 
@@ -239,7 +244,7 @@ class StringIDFilterTestCase(unittest.TestCase):
         self.assert_(idf.recognize("-1"), "-1")
         self.assert_(idf.recognize("50"), "50")
         self.assert_(idf.recognize(3), "3")
-        
+
     def testValues1(self, idf=None):
         if not idf:
             idf = id.StringIDFilter("visit", values="3 0 15 14 4 5".split())
@@ -318,15 +323,13 @@ class StringIDFilterTestCase(unittest.TestCase):
         p.set("className", "lsst.ctrl.sched.joboffice.id.StringIDFilter")
         self.assertRaises(RuntimeError, id.IDFilter.fromPolicy, p)
         p.set("className", "String")
-        
+
         p.set("value", "-8")
         p.add("value", "r")
         p.add("value", "6,0")
         idf = id.IDFilter.fromPolicy(p)
         self.assert_(isinstance(idf, id.StringIDFilter))
         self.testValues2(idf)
-
-
 
 
 __all__ = "AbstractIDFilterTestCase IntegerIDFilterTestCase StringIDFilterTestCase".split()

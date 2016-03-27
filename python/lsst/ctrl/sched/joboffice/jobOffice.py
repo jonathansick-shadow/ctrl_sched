@@ -1,7 +1,7 @@
-# 
+#
 # LSST Data Management System
 # Copyright 2008, 2009, 2010 LSST Corporation.
-# 
+#
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
 #
@@ -9,14 +9,14 @@
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
-# You should have received a copy of the LSST License Statement and 
-# the GNU General Public License along with this program.  If not, 
+#
+# You should have received a copy of the LSST License Statement and
+# the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
@@ -37,12 +37,15 @@ from lsst.pex.logging import Log, BlockTimingLog
 from scheduler import DataTriggeredScheduler
 from lsst.ctrl.sched.utils import serializePolicy, unserializePolicy
 
-import os, time, threading
+import os
+import time
+import threading
 import traceback as tb
 
 VERB2 = -2
 VERB3 = -3
 TRACE = Log.DEBUG
+
 
 class JobOffice(_AbstractBase, threading.Thread):
     """
@@ -121,26 +124,27 @@ class JobOffice(_AbstractBase, threading.Thread):
 
     class _StopThread(threading.Thread):
 
-        def __init__(self, joboffice, stopTopic, runId, brokerHost, 
+        def __init__(self, joboffice, stopTopic, runId, brokerHost,
                      brokerPort=None, waittime=60):
 
             threading.Thread.__init__(self, name=joboffice.getName()+".stop")
             self.setDaemon(True)
-            
+
             self.jo = joboffice
             self.timeout = waittime
 
             self.log = Log(self.jo.log, "stop")
 
             selector = ""
-            if runId:  selector = "RUNID='%s'" % runId
-                
+            if runId:
+                selector = "RUNID='%s'" % runId
+
             if brokerPort:
                 self.rcvr = EventReceiver(brokerHost, brokerPort, stopTopic,
                                           selector)
             else:
                 self.rcvr = EventReceiver(brokerHost, stopTopic, selector)
-                
+
         def run(self):
             while True:
                 event = self.rcvr.receiveEvent(self.timeout)
@@ -151,7 +155,8 @@ class JobOffice(_AbstractBase, threading.Thread):
                 if self.jo.halt:
                     return
 
-    classLookup = { }
+    classLookup = {}
+
 
 class _BaseJobOffice(JobOffice):
     """
@@ -159,7 +164,7 @@ class _BaseJobOffice(JobOffice):
     policy-configured behavior.  
     """
 
-    def __init__(self, rootdir, policy=None, defPolicyFile=None, log=None, 
+    def __init__(self, rootdir, policy=None, defPolicyFile=None, log=None,
                  runId=None, brokerHost=None, brokerPort=None, forDaemon=False,
                  fromSubclass=False):
         """
@@ -216,11 +221,11 @@ class _BaseJobOffice(JobOffice):
             self.policy.mergeDefaults(defaults.getDictionary())
         else:
             self.policy.mergeDefaults(defaults)
-            
+
         # instantiate parent class
         name = self.policy.get("name")
-        persistDir = self.policy.get("persist.dir") % {"schedroot": rootdir, 
-                                                       "name": name    }
+        persistDir = self.policy.get("persist.dir") % {"schedroot": rootdir,
+                                                       "name": name}
         if not os.path.exists(persistDir):
             os.makedirs(persistDir)
         JobOffice.__init__(self, persistDir, log, runId, True)
@@ -250,12 +255,12 @@ class _BaseJobOffice(JobOffice):
         if not self.brokerHost and (not self.brokerPort or self.brokerPort > 0):
             self.brokerHost = self.policy.get("listen.brokerHostName")
 
-        self.dataEvRcvrs       = None
-        self.jobReadyEvRcvr    = None
-        self.jobDoneEvRcvr     = None
+        self.dataEvRcvrs = None
+        self.jobReadyEvRcvr = None
+        self.jobDoneEvRcvr = None
         self.jobAcceptedEvRcvr = None
-        self.jobAssignEvTrx    = None
-        self.jobOfficeRcvr     = None
+        self.jobAssignEvTrx = None
+        self.jobOfficeRcvr = None
         if not forDaemon:
             self._setEventPipes()
 
@@ -267,7 +272,7 @@ class _BaseJobOffice(JobOffice):
         select = ""
         if self.runId:
             select = "RUNID='%s'" % self.runId
-            
+
         if self.brokerPort is None:
             self.dataEvRcvrs = []
             for topic in self.dataTopics:
@@ -280,17 +285,15 @@ class _BaseJobOffice(JobOffice):
                                                select+"and STATUS='job:done'")
             self.jobAcceptedEvRcvr = EventReceiver(self.brokerHost,
                                                    self.jobTopic,
-                                               select+"and STATUS='job:accepted'")
+                                                   select+"and STATUS='job:accepted'")
             self.jobAssignEvTrx = EventTransmitter(self.brokerHost,
                                                    self.jobTopic)
             self.jobOfficeRcvr = EventReceiver(self.brokerHost,
-                                                 self.jobOfficeTopic,
-                                                 select)
+                                               self.jobOfficeTopic,
+                                               select)
             self.jobOfficeStatusEvTrx = EventTransmitter(self.brokerHost,
-                                                        self.jobOfficeStatusTopic)
+                                                         self.jobOfficeStatusTopic)
 
-
-                                                   
         elif self.brokerPort > 0:
             self.dataEvRcvrs = []
             for topic in self.dataTopics:
@@ -310,19 +313,17 @@ class _BaseJobOffice(JobOffice):
                                                    select+"and STATUS='job:accepted'",
                                                    self.brokerPort)
             self.jobAssignEvTrx = EventTransmitter(self.brokerHost,
-                                                   self.jobTopic, 
+                                                   self.jobTopic,
                                                    self.brokerPort)
 
             self.jobOfficeRcvr = EventReceiver(self.brokerHost,
-                                                 self.jobOfficeTopic,
-                                                 select, 
-                                                 self.brokerPort);
+                                               self.jobOfficeTopic,
+                                               select,
+                                               self.brokerPort)
             self.jobOfficeStatusEvTrx = EventTransmitter(self.brokerHost,
-                                                   self.jobOfficeStatusTopic, 
-                                                   self.brokerPort)
+                                                         self.jobOfficeStatusTopic,
+                                                         self.brokerPort)
 
-            
-    
     def managePipelines(self, maxIterations=None):
         """
         continuously listen for events from pipelines and schedule jobs
@@ -335,7 +336,7 @@ class _BaseJobOffice(JobOffice):
                                   until the stop flag is set.
         """
         self.ensureReady()
-        
+
         i = 0
         max = maxIterations or 1
         while i < max:
@@ -347,7 +348,7 @@ class _BaseJobOffice(JobOffice):
             trace = self._trace("loop", VERB3)
 
             self.processJobOfficeEvents()
-            
+
             # listen for completed Jobs
             self.processDoneJobs()
 
@@ -375,8 +376,8 @@ class _BaseJobOffice(JobOffice):
             return
         if self.finalDatasetSent == True:
             with self.bb.queues:
-                 done = self.bb.queues.jobsInProgress.isEmpty() and self.bb.queues.jobsAvailable.isEmpty()
-                 if done:
+                done = self.bb.queues.jobsInProgress.isEmpty() and self.bb.queues.jobsAvailable.isEmpty()
+                if done:
                     evnt = self.makeJobOfficeStatusEvent(self.runId, "joboffice:done")
                     self.jobOfficeStatusEvTrx.publishEvent(evnt)
                     self.jobOfficeCompletedSent = True
@@ -403,7 +404,7 @@ class _BaseJobOffice(JobOffice):
         trace = self._trace("processDoneJobs")
         out = 0
         jevent = self.jobDoneEvRcvr.receiveStatusEvent(self.initialWait)
-            
+
         if not jevent:
             trace.done()
             return 0
@@ -418,7 +419,7 @@ class _BaseJobOffice(JobOffice):
         return out
 
     def _logJobDone(self, jobevent):
-        try: 
+        try:
             self._debug("%s: %s on %s finished %s",
                         (jobevent.getStatus(),
                          jobevent.getPropertySet().getString("pipelineName"),
@@ -431,6 +432,7 @@ class _BaseJobOffice(JobOffice):
 
     def _debug(self, msg, data=None):
         self._log(VERB2, msg, data)
+
     def _inform(self, msg, data=None):
         self._log(Log.INFO, msg, data)
 
@@ -447,7 +449,7 @@ class _BaseJobOffice(JobOffice):
         out = BlockTimingLog(self.log, where, lev)
         out.start()
         return out
-            
+
     def processJobDoneEvent(self, jevent):
         """
         process a job-done event.  If the event matches a job in the 
@@ -458,7 +460,7 @@ class _BaseJobOffice(JobOffice):
             self.log.log(Log.WARN, "Job event has wrong type: " +
                          str(type(jevent)))
             return False
-        
+
         with self.bb:
             job = self.findByPipelineId(jevent.getOriginatorId())
             if not job:
@@ -466,7 +468,7 @@ class _BaseJobOffice(JobOffice):
                 return False
             success = jevent.getPropertySet().getAsBool("success")
 
-            # if the job failed, decrement the retry counter, and check to see if 
+            # if the job failed, decrement the retry counter, and check to see if
             # the job can be retried.  If it can, reschedule it.  If not, mark it as done.
             if success == False:
                 job.decrementRetries()
@@ -483,14 +485,15 @@ class _BaseJobOffice(JobOffice):
 
     def findByPipelineId(self, id):
         with self.bb.queues.jobsInProgress:
-            self.log.log(Log.DEBUG, "findByPipelineId: jobsInProgress.length() = "+ str(self.bb.queues.jobsInProgress.length()))
-            self.log.log(Log.DEBUG, "findByPipelineId: looking up id= "+ str(id))
+            self.log.log(Log.DEBUG, "findByPipelineId: jobsInProgress.length() = " +
+                         str(self.bb.queues.jobsInProgress.length()))
+            self.log.log(Log.DEBUG, "findByPipelineId: looking up id= " + str(id))
             for i in xrange(self.bb.queues.jobsInProgress.length()):
                 job = self.bb.queues.jobsInProgress.get(i)
                 if job.getPipelineId() == id:
                     return job
                 # print "DEBUG:", "%s != %s" % (job.getPipelineId(), id)
-		self.log.log(Log.WARN, "findByPipelineId: %s != %s" % (str(job.getPipelineId()), str(id)))
+                self.log.log(Log.WARN, "findByPipelineId: %s != %s" % (str(job.getPipelineId()), str(id)))
         return None
 
     def processDataEvents(self):
@@ -520,22 +523,22 @@ class _BaseJobOffice(JobOffice):
         return out
 
     def _logDataEvent(self, dataevent):
-        try: 
+        try:
             self._log(VERB3, "%s dataset(s) ready", dataevent.getTopic())
         except Exception, ex:
             self.log.log(Log.WARN, "logging error on " + dataevent.getStatus()
                          + ": " + str(ex))
-                         
-        
+
     def receiveAnyDataEvent(self, timeout):
         if not self.dataEvRcvrs:
             return None
         if len(self.dataEvRcvrs) == 1:
             return self.dataEvRcvrs[0].receiveStatusEvent(timeout)
-        
+
         now = t0 = time.time()
         eachtimeout = timeout/len(self.dataEvRcvrs)/10
-        if eachtimeout == 0:  eachtimeout = 1
+        if eachtimeout == 0:
+            eachtimeout = 1
         while (now - t0 < timeout):
             # take a tenth of the total timeout time to go through list
             for rcvr in self.dataEvRcvrs:
@@ -567,7 +570,7 @@ class _BaseJobOffice(JobOffice):
         out = 0
         with self.bb:
             while not self.bb.queues.pipelinesReady.isEmpty() and \
-                  not self.bb.queues.jobsAvailable.isEmpty():
+                    not self.bb.queues.jobsAvailable.isEmpty():
 
                 with self.bb.queues.pipelinesReady:
                     pipe = self.bb.queues.pipelinesReady.pop()
@@ -585,7 +588,7 @@ class _BaseJobOffice(JobOffice):
 
     def makeJobOfficeStatusEvent(self, runId, status):
         props = PropertySet()
-        props.set("STATUS",status)
+        props.set("STATUS", status)
         return StatusEvent(runId, self.originatorId, props)
 
     def makeJobStatusEvent(self, job, runId, status):
@@ -609,7 +612,6 @@ class _BaseJobOffice(JobOffice):
         props.set("STATUS", "job:assign")
         props.set("name", job.getName())
         return CommandEvent(runId, self.originatorId, pipeline, props)
-        
 
     def receiveReadyPipelines(self):
         """
@@ -644,7 +646,6 @@ class _BaseJobOffice(JobOffice):
         except Exception, ex:
             self.log.log(Log.WARN, "logging error on " + pipeevent.getStatus()
                          + ": " + str(ex))
-            
 
     def toPipelineQueueItem(self, pevent):
         """
@@ -652,13 +653,14 @@ class _BaseJobOffice(JobOffice):
         """
         self._notImplemented("toPipelineQueueItem")
 
+
 class DataTriggeredJobOffice(_BaseJobOffice):
     """
     The behavior of this Job Office is controled completely on the description
     of data in the configuring policy file.  
     """
-    
-    def __init__(self, rootdir, policy=None, log=None, runId=None, 
+
+    def __init__(self, rootdir, policy=None, log=None, runId=None,
                  brokerHost=None, brokerPort=None, forDaemon=False):
         """
         create a JobOffice that is triggered by the appearence of data
@@ -697,15 +699,14 @@ class DataTriggeredJobOffice(_BaseJobOffice):
         dpolf = DefaultPolicyFile("ctrl_sched",
                                   "DataTriggeredJobOffice_dict.paf",
                                   "policies")
-        _BaseJobOffice.__init__(self, rootdir, policy, dpolf, log, runId, 
+        _BaseJobOffice.__init__(self, rootdir, policy, dpolf, log, runId,
                                 brokerHost, brokerPort, forDaemon, True)
 
         # create a scheduler based on "schedule.className"
         self.scheduler = \
             DataTriggeredScheduler(self.bb, self.policy.getPolicy("schedule"),
                                    self.log)
-                                   
-    
+
     def processDataEvent(self, event):
         """
         process an event indicating that one or more datasets are available.
@@ -739,23 +740,20 @@ class DataTriggeredJobOffice(_BaseJobOffice):
             return Dataset.fromPolicy(pol)
         except lsst.pex.exceptions.LsstCppException, ex:
             raise RuntimeError("Dataset encoding error: " + policystr)
-            
+
     def toPipelineQueueItem(self, pevent):
         """
         convert a pipeline-ready event into a pipeline item.
         """
-        props = { "ipid": pevent.getIPId(),
-                  "status":  pevent.getStatus() }
+        props = {"ipid": pevent.getIPId(),
+                 "status": pevent.getStatus()}
         pipename = "unknown"
         if pevent.getPropertySet().exists("pipelineName"):
             pipename = pevent.getPropertySet().getString("pipelineName")
         pipe = PipelineItem.createItem(pipename, pevent.getRunId(),
                                        pevent.getOriginatorId(), props)
-                          
-        return pipe
 
-    
-        
+        return pipe
 
     def findAvailableJobs(self):
         trace = self._trace("findAvailableJobs")
@@ -764,6 +762,6 @@ class DataTriggeredJobOffice(_BaseJobOffice):
 
 JobOffice.classLookup["DataTriggered"] = DataTriggeredJobOffice
 JobOffice.classLookup["DataTriggeredJobOffice"] = DataTriggeredJobOffice
-    
+
 __all__ = "JobOffice DataTriggeredJobOffice".split()
 

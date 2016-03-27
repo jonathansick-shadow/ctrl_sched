@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
-# 
+#
 # LSST Data Management System
 # Copyright 2008, 2009, 2010 LSST Corporation.
-# 
+#
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
 #
@@ -11,21 +11,24 @@
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
-# You should have received a copy of the LSST License Statement and 
-# the GNU General Public License along with this program.  If not, 
+#
+# You should have received a copy of the LSST License Statement and
+# the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
 #
 from __future__ import with_statement
-import sys, os, time
-import optparse, traceback
+import sys
+import os
+import time
+import optparse
+import traceback
 
 from lsst.pex.logging import Log, DualLog
 from lsst.pex.policy import Policy, DefaultPolicyFile
@@ -37,15 +40,15 @@ usage = """usage %prog [-vqsD] [-L lev] [-l logfile] [-d dir] [-b brokerhost] [-
 desc = """Run a Job Office for a pipeline according to a policy file"""
 
 cl = optparse.OptionParser(usage=usage, description=desc)
-cl.add_option("-v", "--verbose", action="store_true", default=False, 
+cl.add_option("-v", "--verbose", action="store_true", default=False,
               dest="toscreen", help="print all logging messages to screen")
 cl.add_option("-q", "--quiet", action="store_const", default=0,
               const=Log.WARN, dest="screenverb",
               help="limit screen messages to error messages")
-cl.add_option("-s", "--silent", action="store_const", 
+cl.add_option("-s", "--silent", action="store_const",
               const=Log.FATAL+1, dest="screenverb",
               help="limit screen messages to error messages")
-cl.add_option("-D", "--as-daemon", action="store_true", default=False, 
+cl.add_option("-D", "--as-daemon", action="store_true", default=False,
               dest="asdaemon",
               help="run as a daemon: fork a process and then exit the parent")
 run.addVerbosityOption(cl, dest="logverb")
@@ -53,15 +56,16 @@ cl.add_option("-l", "--logfile", action="store", dest="logfile",
               help="use the given path as location of logfile")
 cl.add_option("-d", "--datadir", action="store", dest="rootdir",
               help="root working directory for job offices")
-cl.add_option("-b", "--broker-host", action="store", dest="brokerhost", 
+cl.add_option("-b", "--broker-host", action="store", dest="brokerhost",
               help="hostname where event broker is running")
 cl.add_option("-p", "--broker-port", action="store", type=int,
-              dest="brokerport", 
+              dest="brokerport",
               help="port number where event broker is listening")
 cl.add_option("-r", "--runid", action="store", default="unkn_run", dest="runid",
               help="the runid the pipelines were launched under")
 
 logger = Log(Log.getDefaultLog(), "joboffice")
+
 
 def main():
     """
@@ -84,14 +88,13 @@ def main():
                                              defpolf.getRepositoryPath()))
     name = policy.getString("name")
 
-    
     # set job office root directory
     if not os.path.isabs(cl.opts.rootdir):
         cl.opts.rootdir = os.path.abspath(cl.opts.rootdir)
     persistdir = os.path.join(cl.opts.rootdir, name)
     if policy.exists("persist.dir"):
         persistdir = policy.get("persist.dir") % \
-                     {"schedroot": cl.opts.rootdir, "name": name }
+            {"schedroot": cl.opts.rootdir, "name": name}
 
     # create the logger(s)
     logfile = cl.opts.logfile
@@ -100,7 +103,7 @@ def main():
     if not os.path.exists(logfile):
         if not os.path.exists(os.path.dirname(logfile)):
             os.makedirs(os.path.dirname(logfile))
-    
+
     if not cl.opts.asdaemon or cl.opts.toscreen:
         ofclogger = DualLog(logfile, Log.DEBUG, Log.DEBUG, False)
         # logging bug workaround
@@ -109,11 +112,11 @@ def main():
         ofclogger = Log()
         ofclogger.addDestination(logfile)
     ofclogger.setThreshold(run.verbosity2threshold(cl.opts.logverb, 0))
-    ofclogger.log(-2,"office threshold: %i" % ofclogger.getThreshold())
+    ofclogger.log(-2, "office threshold: %i" % ofclogger.getThreshold())
 
     try:
         # create the JobOffice instance
-        office = createJobOffice(cl.opts.rootdir, policy, ofclogger, 
+        office = createJobOffice(cl.opts.rootdir, policy, ofclogger,
                                  cl.opts.runid, cl.opts.brokerhost,
                                  cl.opts.brokerport)
     except Exception, ex:
@@ -178,7 +181,6 @@ def main():
                     office.join(60)
                 sys.exit(0)
 
-
     except Exception, ex:
         logger.log(Log.FATAL, str(ex))
         if office.isAlive():
@@ -186,6 +188,7 @@ def main():
             office.join(30)
         traceback.print_exc(file=sys.stderr)
         sys.exit(1)
+
 
 def daemon_fork(persistdir):
     # based on section 6.7, Python Cookbook; using double-fork technique
@@ -219,11 +222,12 @@ def daemon_fork(persistdir):
                            ex.strerror)
 
     return pid
-    
+
 
 def fail(msg):
     logger.log(Log.FATAL, msg)
     sys.exit(1)
+
 
 def createJobOffice(rootdir, policy, log, runId, brokerhost, brokerport):
     className = "DataTriggered"

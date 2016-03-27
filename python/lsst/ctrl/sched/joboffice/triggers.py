@@ -1,7 +1,7 @@
-# 
+#
 # LSST Data Management System
 # Copyright 2008, 2009, 2010 LSST Corporation.
-# 
+#
 # This product includes software developed by the
 # LSST Project (http://www.lsst.org/).
 #
@@ -9,14 +9,14 @@
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
-# You should have received a copy of the LSST License Statement and 
-# the GNU General Public License along with this program.  If not, 
+#
+# You should have received a copy of the LSST License Statement and
+# the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 #
 
@@ -32,11 +32,13 @@ from id import IDFilter
 from lsst.ctrl.sched import Dataset, utils
 from lsst.ctrl.sched.base import _AbstractBase
 
-import os, copy
+import os
+import copy
 import importlib
 
 # NOTE:  the two trigger implementations do not use the Trigger API in
 # a consistent way; the Trigger API needs to be reworked.
+
 
 class Trigger(_AbstractBase):
     """
@@ -83,7 +85,6 @@ class Trigger(_AbstractBase):
                               inputs and outputs)
         """
         self._notImplemented("listDatasets")
-    
 
     def recognize(self, dataset):
         """
@@ -97,7 +98,7 @@ class Trigger(_AbstractBase):
         """
         return None
 
-    classLookup = { }
+    classLookup = {}
 
     @staticmethod
     def fromPolicy(policy, isIOdata=False):
@@ -122,7 +123,8 @@ class Trigger(_AbstractBase):
                                 clsname)
 
         return cls.fromPolicy(policy, isIOdata)
-        
+
+
 class SimpleTrigger(Trigger):
     """
     a Trigger implementation
@@ -152,20 +154,19 @@ class SimpleTrigger(Trigger):
             for key in kw.keys():
                 ids[key] = kw[key]
 
-        if ids: 
+        if ids:
             self.idfilts = {}
             for id in ids.keys():
                 self.idfilts[id] = ids[id]
                 if isinstance(self.idfilts[id], list):
-                    self.idfilts[id] = list( self.idfilts[id] )
+                    self.idfilts[id] = list(self.idfilts[id])
                 else:
-                    self.idfilts[id] = [ self.idfilts[id] ]
+                    self.idfilts[id] = [self.idfilts[id]]
                 if self.isstatic and \
-                   len(filter(lambda i: not i.hasStaticValueSet(), 
+                   len(filter(lambda i: not i.hasStaticValueSet(),
                               self.idfilts[id])) > 0:
                     self.isstatic = False
 
-        
     def recognize(self, dataset):
         """
         return a list of datasets that are expected to be available when 
@@ -176,19 +177,19 @@ class SimpleTrigger(Trigger):
         if self.dataTypes is not None and \
            dataset.type not in self.dataTypes:
             return None
-    
+
         # attempt to recognize the ids
         if self.idfilts is not None:
             if dataset.ids is None:
                 return None
-            
+
             # iterate through the identifier filters, passing through
             # the appropriate identifiers from the dataset
             for idname in self.idfilts.keys():
                 if not dataset.ids.has_key(idname):
                     return None
-                
-                # we're looking for this one; the identifier is 
+
+                # we're looking for this one; the identifier is
                 # recognized if any of filters return True
                 recognized = False
                 for filt in self.idfilts[idname]:
@@ -228,7 +229,8 @@ class SimpleTrigger(Trigger):
             # we are listing input/output data; restrict the ids to those
             # defined in this class instance's data
             template = copy.deepcopy(template)
-            if template.ids is None: template.ids = {}
+            if template.ids is None:
+                template.ids = {}
             for id in template.ids.keys():
                 if not id in self.idfilts.keys():
                     del template.ids[id]
@@ -238,25 +240,25 @@ class SimpleTrigger(Trigger):
         else:
             # we are listing only the trigger data sets defined by this trigger.
             # The template controls what datatypes get into the output list.
-            types = [ template.type ]
+            types = [template.type]
 
         # get a list of allowed id values
         idvals = {}
         if self.idfilts is not None:
-           for id in self.idfilts.keys():
-             idvals[id] = []
-             for filt in self.idfilts[id]:
-                if filt.hasStaticValueSet():
-                    # filter provides closed set of allowed values
-                    idvals[id].extend(filt.allowedValues())
-                elif template.ids.has_key(id):
-                    # take the value from the template the only allowed value
-                    idvals[id].append(template.ids[id])
-                else:
-                    # template datsets unable to close the set
-                    raise RuntimeError("can't close identifier set for " + id)
-             if len(idvals[id]) == 0:
-                del idvals[id]
+            for id in self.idfilts.keys():
+                idvals[id] = []
+                for filt in self.idfilts[id]:
+                    if filt.hasStaticValueSet():
+                        # filter provides closed set of allowed values
+                        idvals[id].extend(filt.allowedValues())
+                    elif template.ids.has_key(id):
+                        # take the value from the template the only allowed value
+                        idvals[id].append(template.ids[id])
+                    else:
+                        # template datsets unable to close the set
+                        raise RuntimeError("can't close identifier set for " + id)
+                if len(idvals[id]) == 0:
+                    del idvals[id]
 
         # these are the ids that we need to loop over; for the others, we
         # just take the value from the template
@@ -279,7 +281,7 @@ class SimpleTrigger(Trigger):
                 # limit
                 while iter[idnames[-1]] < valcnt[idnames[-1]]:
 
-                    # clone the template
+                        # clone the template
                     ds = copy.deepcopy(template)
                     ds.type = type
                     if ds.ids is None:
@@ -308,7 +310,6 @@ class SimpleTrigger(Trigger):
                 out.append(ds)
 
         return out
-    
 
     @staticmethod
     def fromPolicy(policy, isIOdata=False):
@@ -325,7 +326,7 @@ class SimpleTrigger(Trigger):
 
         idfilts = None
         if policy.exists("id"):
-            idfilts = {} 
+            idfilts = {}
             idps = policy.getArray("id")
             for idp in idps:
                 idfilt = IDFilter.fromPolicy(idp)
@@ -339,6 +340,7 @@ class SimpleTrigger(Trigger):
 
 Trigger.classLookup["Simple"] = SimpleTrigger
 Trigger.classLookup["SimpleTrigger"] = SimpleTrigger
+
 
 class MapperTrigger(Trigger):
     """
@@ -376,7 +378,7 @@ class MapperTrigger(Trigger):
         if matchTypes is None:
             matchTypes = []
         elif not isinstance(matchTypes, list):
-            matchTypes = [ matchTypes ]
+            matchTypes = [matchTypes]
         self.matchTypes = matchTypes
         if not isinstance(mapper, Mapper):
             raise ValueError("mapper parameter value not a Mapper:" +
@@ -407,7 +409,7 @@ class MapperTrigger(Trigger):
         """
         if self.matchTypes and template.type not in self.matchTypes:
             return []
-        
+
         trigVals = {}
         for id in self.triggerIds:
             trigVals[id] = None
@@ -426,7 +428,6 @@ class MapperTrigger(Trigger):
             out.append(Dataset(outType, ids=ids))
 
         return out
-
 
     def _mapIds(self, triggerValues):
         return self.mapper.queryMetadata(self.lookupType, self.gran,
@@ -456,7 +457,7 @@ class MapperTrigger(Trigger):
         defPolicy = Policy.createPolicy(defPolFile,
                                         defPolFile.getRepositoryPath())
         policy.mergeDefaults(defPolicy.getDictionary())
-        
+
         # create the mapper
         mapperPol = policy.get("mapper")
         clsname = mapperPol.get("className")
@@ -465,7 +466,7 @@ class MapperTrigger(Trigger):
         module = importlib.import_module(".".join(components[:-1]))
         cls = getattr(module, components[-1])
         mapper = cls(root=mapperConfig.get("root"))
-        
+
         lookupType = mapperPol.get("lookupType")
         granKey = mapperPol.get("idGranularity")
 
@@ -490,5 +491,5 @@ class MapperTrigger(Trigger):
 
 Trigger.classLookup["Mapper"] = MapperTrigger
 Trigger.classLookup["MapperTrigger"] = MapperTrigger
-        
-        
+
+
